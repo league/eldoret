@@ -1,0 +1,6 @@
+/result
+/.envrc
+/.direnv/
+/init.log
+/init.elc
+/.pre-commit-config.yaml
