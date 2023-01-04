@@ -31,6 +31,7 @@
       # Add a suffix to an attribute name to represent the compiled init file.
       mkInitAttr = name: name + "-init-elc";
       mkInitFilename = name: name + "-init.elc";
+      mkTmpEmacsDir = name: "/tmp/dotemax-${name}/";
 
     in {
       # Emacs variants are defined using overlays.  They can vary in build
@@ -76,9 +77,13 @@
           value.type = "app";
           # To run emacs stand-alone, we use ‘--no-init-file’, but manually call
           # ‘package-initialize’ to ensure that autoloads are available, and
-          # then explicitly load the byte-compiled init file.
+          # then explicitly load the byte-compiled init file.  We also create a
+          # placeholder ‘user-emacs-directory’ in ‘/tmp’ for state files and
+          # customizations.
           value.program = toString (pkgs.writeShellScript "emacs-standalone" ''
+            mkdir -p "${mkTmpEmacsDir name}"
             ${pkgs.${name}}/bin/emacs --no-init-file \
+              --eval '(setq user-emacs-directory "${mkTmpEmacsDir name}")' \
               --funcall package-initialize \
               --load ${self.packages.${pkgs.system}.${mkInitAttr name}} "$@"
           '');
