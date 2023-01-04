@@ -67,13 +67,6 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
   :bind
   (("C-h C-u" . use-package-report)))
 
-;;;; Frame settings
-
-(setq default-frame-alist
-      '((menu-bar-lines . 0)
-        (tool-bar-lines . 0)
-        (vertical-scroll-bars)))
-
 ;;;; Programming modes
 
 ;; ‘rainbow-mode’ highlights color specs like #f7a1c8, which should have a pink

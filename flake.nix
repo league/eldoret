@@ -83,6 +83,7 @@
             mkdir -p "${mkTmpEmacsDir name}"
             ${pkgs.${name}}/bin/emacs --no-init-file \
               --eval '(setq user-emacs-directory "${mkTmpEmacsDir name}")' \
+              --load ${./.}/early-init.el \
               --funcall package-activate-all \
               --load ${self.packages.${pkgs.system}.${mkInitAttr name}} "$@"
           '');
