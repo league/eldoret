@@ -37,12 +37,11 @@
       # Emacs variants are defined using overlays.  They can vary in build
       # arguments, package selections, etc.
       overlays.default = let
-        epkgs = p: with p; [ olivetti rainbow-mode use-package ];
-        apkgs = p: epkgs p ++ [ p.avy ];
+        ttyPkgs = p: [ p.avy p.olivetti p.rainbow-mode p.use-package ];
+        guiPkgs = p: ttyPkgs p ++ [ p.benchmark-init ];
       in _final: prev: {
-        emacs = setMainProgram (prev.emacs.pkgs.withPackages epkgs);
-        amacs = setMainProgram (prev.emacs.pkgs.withPackages apkgs);
-        emacs-nox = setMainProgram (prev.emacs-nox.pkgs.withPackages epkgs);
+        emacs-nox = setMainProgram (prev.emacs-nox.pkgs.withPackages ttyPkgs);
+        emacs = setMainProgram (prev.emacs.pkgs.withPackages guiPkgs);
       };
 
       packages = eachSystem (pkgs:
@@ -76,7 +75,7 @@
           inherit name;
           value.type = "app";
           # To run emacs stand-alone, we use ‘--no-init-file’, but manually call
-          # ‘package-initialize’ to ensure that autoloads are available, and
+          # ‘package-activate-all’ to ensure that autoloads are available, and
           # then explicitly load the byte-compiled init file.  We also create a
           # placeholder ‘user-emacs-directory’ in ‘/tmp’ for state files and
           # customizations.
@@ -84,7 +83,7 @@
             mkdir -p "${mkTmpEmacsDir name}"
             ${pkgs.${name}}/bin/emacs --no-init-file \
               --eval '(setq user-emacs-directory "${mkTmpEmacsDir name}")' \
-              --funcall package-initialize \
+              --funcall package-activate-all \
               --load ${self.packages.${pkgs.system}.${mkInitAttr name}} "$@"
           '');
         }) // {
