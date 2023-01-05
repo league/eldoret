@@ -4,6 +4,10 @@
 
 ;;; Code:
 
+;;;; Packages and libraries
+
+(setq load-prefer-newer t)
+
 ;;;; Frame settings
 
 (setq default-frame-alist
@@ -12,4 +16,3 @@
         (vertical-scroll-bars)))
 
 ;;; early-init.el ends here
-

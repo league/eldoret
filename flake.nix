@@ -80,12 +80,22 @@
           # placeholder ‘user-emacs-directory’ in ‘/tmp’ for state files and
           # customizations.
           value.program = toString (pkgs.writeShellScript "emacs-standalone" ''
+            set -v
             mkdir -p "${mkTmpEmacsDir name}"
             ${pkgs.${name}}/bin/emacs --no-init-file \
               --eval '(setq user-emacs-directory "${mkTmpEmacsDir name}")' \
               --load ${./.}/early-init.el \
               --funcall package-activate-all \
               --load ${self.packages.${pkgs.system}.${mkInitAttr name}} "$@"
+          '');
+        }) // eachEmacs (name: {
+          name = "${name}-chemacs";
+          value.type = "app";
+          value.program = toString (pkgs.writeShellScript "chemacs" ''
+            set -v
+            ${pkgs.${name}}/bin/emacs --with-profile \
+              '((user-emacs-directory . "$PWD")
+                (nix-elisp-bundle . "${pkgs.${name}.deps}"))'
           '');
         }) // {
           default = self.apps.${pkgs.system}.${defaultEmacs};
