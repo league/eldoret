@@ -21,6 +21,7 @@
               emacs-overlay.overlays.package
               emacs-overlay.overlays.emacs
               self.overlays.default
+              self.overlays.packageBuild
             ];
           }));
 
@@ -57,6 +58,22 @@
       in _final: prev: {
         emacs-nox = setMainProgram (prev.emacs-nox.pkgs.withPackages ttyPkgs);
         emacs = setMainProgram (prev.emacs.pkgs.withPackages guiPkgs);
+      };
+
+      # This overlay tweaks the packageBuild tool so that all packages built
+      # with nix will include README files alongside the code.  Otherwise, we
+      # have only Info files and Commentary sections in Elisp files.
+      overlays.packageBuild = _final: prev: {
+        emacsPackagesFor = emacs:
+          (prev.emacsPackagesFor emacs).overrideScope' (_: esuper: {
+            melpaBuild = args:
+              (esuper.melpaBuild args).overrideAttrs (before: {
+                packageBuild = before.packageBuild.overrideAttrs (old: {
+                  patches = [ ./package-build-with-readme.patch ]
+                    ++ old.patches;
+                });
+              });
+          });
       };
 
       packages = eachSystem (pkgs:

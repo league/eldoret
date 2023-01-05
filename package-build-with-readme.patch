@@ -1,0 +1,20 @@
+diff '--color=auto' -u a/package-build.el b/package-build.el
+--- a/package-build.el	2023-01-05 13:32:59.086875715 -0500
++++ b/package-build.el	2023-01-05 13:30:27.696444389 -0500
+@@ -625,6 +625,7 @@
+ (defconst package-build-default-files-spec
+   '("*.el" "lisp/*.el"
+     "dir" "*.info" "*.texi" "*.texinfo"
++    "README*" "readme*"
+     "doc/dir" "doc/*.info" "doc/*.texi" "doc/*.texinfo"
+     "docs/dir" "docs/*.info" "docs/*.texi" "docs/*.texinfo"
+     (:exclude
+@@ -743,7 +744,7 @@
+       (cond ((file-regular-p src*)
+              (package-build--message
+               "  %s %s -> %s" (if (equal src dst) " " "!") src dst)
+-             (copy-file src* dst*))
++             (copy-file src* dst* 'ok-if-already-exists))
+             ((file-directory-p src*)
+              (package-build--message
+               "  %s %s => %s" (if (equal src dst) " " "!") src dst)
