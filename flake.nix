@@ -1,7 +1,12 @@
 {
   description = "An Emacs configuration.";
 
-  outputs = { self, nixpkgs, ... }:
+  inputs.emacs-overlay = {
+    url = "github:nix-community/emacs-overlay";
+    inputs.nixpkgs.follows = "nixpkgs";
+  };
+
+  outputs = { self, nixpkgs, emacs-overlay, ... }:
     let
       inherit (nixpkgs) lib;
 
@@ -12,7 +17,11 @@
         (system:
           mk (import nixpkgs {
             inherit system;
-            overlays = lib.attrValues self.overlays;
+            overlays = [
+              emacs-overlay.overlays.package
+              emacs-overlay.overlays.emacs
+              self.overlays.default
+            ];
           }));
 
       # It’s helpful for emacs packages to set the ‘mainProgram’ attribute.
@@ -37,7 +46,13 @@
       # Emacs variants are defined using overlays.  They can vary in build
       # arguments, package selections, etc.
       overlays.default = let
-        ttyPkgs = p: [ p.avy p.olivetti p.rainbow-mode p.use-package ];
+        ttyPkgs = p: [
+          p.auto-compile
+          p.avy
+          p.olivetti
+          p.rainbow-mode
+          p.use-package
+        ];
         guiPkgs = p: ttyPkgs p ++ [ p.benchmark-init ];
       in _final: prev: {
         emacs-nox = setMainProgram (prev.emacs-nox.pkgs.withPackages ttyPkgs);

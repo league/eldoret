@@ -53,19 +53,28 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
 
 ;;;;; Package configuration utilities
 
-(eval-when-compile
-  (require 'use-package))
+(eval-and-compile
+  (require 'use-package)
+  (setq use-package-verbose t
+        use-package-compute-statistics t))
 
 ;; ‘bind-key’ is a run-time dependency of ‘use-package’.  Without it, ‘:bind’
 ;; throws “Symbol’s value as variable is void: ‘personal-keybindings’”.
 (require 'bind-key)
 
 (use-package use-package
-  :init
-  (setq use-package-verbose t
-        use-package-compute-statistics t)
   :bind
   (("C-h C-u" . use-package-report)))
+
+;; Automatically (re-)compile elisp code.
+(use-package auto-compile
+  :init
+  (setq auto-compile-mode-line-counter t
+        auto-compile-source-recreate-deletes-dest t
+        auto-compile-toggle-deletes-nonlib-dest t)
+  (auto-compile-on-load-mode)
+  :hook (emacs-lisp-mode . auto-compile-on-save-mode)
+  :commands auto-compile-on-load-mode)
 
 ;;;; Programming modes
 
