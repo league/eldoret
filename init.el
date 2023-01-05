@@ -54,7 +54,8 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
 ;;;;; Package configuration utilities
 
 (eval-and-compile
-  (require 'use-package)
+  (require 'use-package) ;; Configuration macros
+  (require 'general) ;; Convenient macros for keybindings
   (setq use-package-verbose t
         use-package-compute-statistics t))
 
@@ -62,9 +63,9 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
 ;; throws “Symbol’s value as variable is void: ‘personal-keybindings’”.
 (require 'bind-key)
 
-(use-package use-package
-  :bind
-  (("C-h C-u" . use-package-report)))
+(use-package use-package ;; Configuration macros
+  :general
+  ("C-h C-u" #'use-package-report))
 
 ;; Automatically (re-)compile elisp code.
 (use-package auto-compile
@@ -76,18 +77,58 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
   :hook (emacs-lisp-mode . auto-compile-on-save-mode)
   :commands auto-compile-on-load-mode)
 
+;;;;; Startup dashboard/scratch screen
+
+(setq inhibit-startup-buffer-menu t
+      inhibit-startup-screen t
+      inhibit-startup-echo-area-message "league"
+      initial-buffer-choice nil
+      initial-scratch-message "")
+
+;;;; Fonts and themes
+
+(use-package default-text-scale ;; Adjust font size in all frames
+  :no-require t
+  :if (locate-library "default-text-scale")
+  :init
+  (setq frame-resize-pixelwise t)
+  ;; Nice to make bindings the same as kitty (requires ctrl-shift) and
+  ;; firefox (works with or without shift) — they don't need to be
+  ;; usable from TTY.
+  :general
+  ("C-+" #'default-text-scale-increase)
+  ("C-_" #'default-text-scale-decrease)
+  ("C-|" #'default-text-scale-reset))
+
+;;;; Key bindings
+
+;;;;; MacOS modifiers
+
+;; Need ‘defvar’ to avoid warnings on Linux, but setting values here does not
+;; take effect on Darwin.
+(defvar mac-command-modifier)
+(defvar mac-option-modifier)
+(defvar mac-right-option-modifier)
+(when (eq window-system 'ns)
+  ;; So then need ‘setq’ to change settings on Darwin.
+  (setq mac-command-modifier 'meta)
+  (setq mac-option-modifier 'super)
+  (setq mac-right-option-modifier 'control))
+
 ;;;; Programming modes
 
-;; ‘rainbow-mode’ highlights color specs like #f7a1c8, which should have a pink
-;; background.  (Words like red, RoyalBlue should not be highlighted, because we
-;; removed ‘emacs-lisp-mode’ from ‘rainbow-x-colors-major-mode-list’).
-(use-package rainbow-mode
-  :hook emacs-lisp-mode
+(use-package rainbow-mode ;; Colorize color specs like #bff
+  :hook emacs-lisp-mode nix-mode
   :config
+  ;; Usually, colorizing plain words like red and RoyalBlue is distracting.
   (setq rainbow-x-colors-major-mode-list nil))
 
-(use-package avy
+(use-package avy ;; Jump to arbitrary positions in visible text
   :bind (("C-c a" . avy-goto-line)))
+
+;;;;; Languages
+
+(use-package nix-mode :defer)
 
 ;;;; Afterword
 ;; Local Variables:
@@ -96,4 +137,3 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
 ;; End:
 
 ;;; init.el ends here
-

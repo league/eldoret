@@ -48,13 +48,19 @@
       # arguments, package selections, etc.
       overlays.default = let
         ttyPkgs = p: [
-          p.auto-compile
-          p.avy
-          p.olivetti
-          p.rainbow-mode
-          p.use-package
+          p.auto-compile # Automatically (re-)compile elisp code
+          p.avy # Jump to arbitrary positions in visible text
+          p.general # Convenient macros for keybindings
+          p.nix-mode # Language mode for nix expressions
+          p.olivetti # Centered, constrained-width editing
+          p.rainbow-mode # Colorize color specs like #bff
+          p.use-package # Configuration macros
         ];
-        guiPkgs = p: ttyPkgs p ++ [ p.benchmark-init ];
+        guiPkgs = p:
+          ttyPkgs p ++ [
+            p.benchmark-init # Record times for ‘require’ and ‘load’ calls
+            p.default-text-scale # Adjust font size in all frames
+          ];
       in _final: prev: {
         emacs-nox = setMainProgram (prev.emacs-nox.pkgs.withPackages ttyPkgs);
         emacs = setMainProgram (prev.emacs.pkgs.withPackages guiPkgs);
