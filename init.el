@@ -86,6 +86,21 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
       initial-scratch-message "")
 
 
+;;;; Key bindings
+
+;;;;; MacOS modifiers
+
+;; Need ‘defvar’ to avoid byte-compile warnings on Linux, but setting values within the here does not
+;; take effect on Darwin.
+(defvar mac-command-modifier)
+(defvar mac-option-modifier)
+(defvar mac-right-option-modifier)
+(when (eq window-system 'ns)
+  ;; So then need ‘setq’ to change settings on Darwin.
+  (setq mac-command-modifier 'meta)
+  (setq mac-option-modifier 'super)
+  (setq mac-right-option-modifier 'control))
+
 ;;;; Visual interface
 
 ;;;;; Fonts and themes
@@ -127,7 +142,7 @@ If buffer has line numbers already, omit line number from mode line."
       (ignore face)
       (list '(-3 "%p")
             (if (bound-and-true-p display-line-numbers-mode) "" " L%l")
-            " C%c")))
+            " C%C")))
   ;; (telephone-line-defsegment* cl/telephone-line-evil-tag-segment ()
   ;;   "Displays the current evil state, abbreviated."
   ;;   (if (evil-visual-state-p)
@@ -166,20 +181,46 @@ If buffer has line numbers already, omit line number from mode line."
      (unless (assoc 'fill-column (buffer-local-variables))
        (setq fill-column (or col 80))))
 
-;;;; Key bindings
 
-;;;;; MacOS modifiers
+;;;;; Full screen
 
-;; Need ‘defvar’ to avoid warnings on Linux, but setting values here does not
-;; take effect on Darwin.
-(defvar mac-command-modifier)
-(defvar mac-option-modifier)
-(defvar mac-right-option-modifier)
-(when (eq window-system 'ns)
-  ;; So then need ‘setq’ to change settings on Darwin.
-  (setq mac-command-modifier 'meta)
-  (setq mac-option-modifier 'super)
-  (setq mac-right-option-modifier 'control))
+(use-package echo-bar ;; Turn echo area into a custom status bar
+  :defer t
+  :commands echo-bar-mode
+  :init
+  (setq echo-bar-minibuffer t
+        echo-bar-update-interval 3
+        echo-bar-right-padding 2
+        echo-bar-format
+        '((:eval
+           (when battery-status-function
+             (let* ((bs (funcall battery-status-function))
+                    (bt (battery-format "%B" bs)))
+               (concat
+                (battery-format " %p%%%%" bs)
+                (pcase bt
+                  ("charging" "+")
+                  ("discharging" "-")
+                  (_ bt))))))
+          (:eval
+           (format-time-string " %H:%M %a %1e %b")))) ; 23:19 Tue 5 Jul
+  (add-hook 'window-state-change-hook #'cl/echo-bar-when-fullscreen)
+  :config
+  (require 'battery))
+
+(defun cl/echo-bar-when-fullscreen ()
+   "Make echo area display status info whenever we are fullscreen.
+Full-screen mode activated with \\[toggle-frame-fullscreen] hides
+the date/time and battery display on the desktop's panel, so this
+can help."
+   ;; Are we full-screen?
+   (let ((fs (eq (frame-parameter nil 'fullscreen) 'fullboth)))
+     (if fs
+         (echo-bar-mode 1)
+       ;; We're not full-screen, but don't force the echo-bar package to load
+       ;; just to turn it off, if it hasn't been used yet!
+       (if (bound-and-true-p echo-bar-mode)
+           (echo-bar-mode -1)))))
 
 ;;;; Programming modes
 

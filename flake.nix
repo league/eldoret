@@ -50,6 +50,7 @@
         ttyPkgs = p: [
           p.auto-compile # Automatically (re-)compile elisp code
           p.avy # Jump to arbitrary positions in visible text
+          p.echo-bar # Turn echo area into a custom status bar
           p.ef-themes # Colorful and legible themes
           p.general # Convenient macros for keybindings
           p.nix-mode # Language mode for nix expressions
