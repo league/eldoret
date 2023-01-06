@@ -49,6 +49,7 @@
           p.ef-themes # Colorful and legible themes
           p.general # Convenient macros for keybindings
           p.nix-mode # Language mode for nix expressions
+          p.no-littering # Keep ‘user-emacs-directory’ clean
           p.olivetti # Centered, constrained-width editing
           p.rainbow-mode # Colorize color specs like #bff
           p.telephone-line # A pretty and configurable mode line
@@ -86,17 +87,21 @@
           inherit name;
           value = pkgs.${name};
         }) // eachEmacs (name: {
-          # Derivation for the byte-compiled init file.  It is used only for running
-          # the configuration as a stand-alone app with “nix run”, but the package
-          # is also exported here for dev convenience.  The ‘egrep’ is because
-          # ‘batch-byte-compile’ doesn’t seem to reliably set an exit status on
-          # error.  We also set ‘byte-compile-error-on-warn’ in the init file
-          # itself, so warnings are flagged as errors.
+          # Derivation for the byte-compiled init file.  It is used only for
+          # running the configuration as a stand-alone app with “nix run”, but
+          # the package is also exported here for dev convenience.  The ‘egrep’
+          # is because ‘batch-byte-compile’ doesn’t seem to reliably set an exit
+          # status on error.  We also set ‘byte-compile-error-on-warn’ in the
+          # init file itself, so warnings are flagged as errors.  Unfortunately,
+          # byte- compiling needs a writable ‘$XDG_CONFIG_HOME’ because loading
+          # ‘no-littering’ calls ‘make-directory’ for the etc/ and var/ subdirs.
           name = "${name}-init-elc";
           value =
             pkgs.runCommand "init.elc" { buildInputs = [ pkgs.${name} ]; } ''
               set -v
               cp ${./.}/init.el ./init.el
+              export XDG_CONFIG_HOME="$PWD/home"
+              mkdir -vp "$XDG_CONFIG_HOME/emacs"
               emacs --batch -f batch-byte-compile init.el |& tee ./init.log
               egrep --quiet '^(Error|Cannot)' ./init.log && false
               cp ./init.elc "$out"

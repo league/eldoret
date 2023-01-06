@@ -77,6 +77,8 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
   :hook (emacs-lisp-mode . auto-compile-on-save-mode)
   :commands auto-compile-on-load-mode)
 
+(use-package no-littering) ;; Keep ‘user-emacs-directory’ clean
+
 ;;;;; Startup dashboard/scratch screen
 
 (setq inhibit-startup-buffer-menu t
@@ -234,6 +236,58 @@ can help."
        ;; just to turn it off, if it hasn't been used yet!
        (if (bound-and-true-p echo-bar-mode)
            (echo-bar-mode -1)))))
+
+;;;; File system
+
+;;;;; Track recent files
+
+(use-package recentf ;; Track recently-opened files
+  :defer t
+  :init
+  (setq recentf-max-saved-items 1024)
+  :hook
+  (emacs-startup . recentf-mode)
+  :commands
+  recentf-save-list
+  :config
+  (add-to-list 'recentf-exclude "^/\\(?:ssh\\|su\\|sudo\\)?:")
+  (add-to-list 'recentf-exclude no-littering-var-directory)
+  (add-to-list 'recentf-exclude no-littering-etc-directory)
+  ;; Generally, recentf-save-list is only run when exiting emacs, but we should
+  ;; save periodically during idle time.
+  (add-hook 'recentf-mode-hook #'cl/recentf-save-hook))
+
+(defvar cl/recentf-changes-since-save 0
+  "How many times ‘recentf-list’ has been modified since last save.")
+
+(defun cl/recentf-change ()
+  "Record a change to ‘recentf-list’."
+  (cl-incf cl/recentf-changes-since-save)
+  nil)
+
+(defun cl/recentf-save ()
+  "Save ‘recentf-list’ if it has changed since last save."
+  (unless (zerop cl/recentf-changes-since-save)
+    (recentf-save-list)
+    (setq cl/recentf-changes-since-save 0)))
+
+(defvar cl/recentf-save-timer nil
+  "Timer info for ‘cl/recentf-save’.")
+
+(defun cl/recentf-save-hook ()
+  "Mode hook to enable/disable saving ‘recentf-list’ periodically."
+  (if recentf-mode
+      (progn
+        (add-hook 'find-file-hook #'cl/recentf-change)
+        (add-hook 'write-file-functions #'cl/recentf-change)
+        (add-hook 'kill-buffer-hook #'cl/recentf-change)
+        (setq cl/recentf-save-timer
+              (run-with-idle-timer 10 'repeat #'cl/recentf-save)))
+    (remove-hook 'find-file-hook #'cl/recentf-change)
+    (remove-hook 'write-file-functions #'cl/recentf-change)
+    (remove-hook 'kill-buffer-hook #'cl/recentf-change)
+    (setq cl/recentf-save-timer (cancel-timer cl/recentf-save-timer))))
+
 
 ;;;; Programming modes
 
