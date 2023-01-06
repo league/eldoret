@@ -50,10 +50,12 @@
         ttyPkgs = p: [
           p.auto-compile # Automatically (re-)compile elisp code
           p.avy # Jump to arbitrary positions in visible text
+          p.ef-themes # Colorful and legible themes
           p.general # Convenient macros for keybindings
           p.nix-mode # Language mode for nix expressions
           p.olivetti # Centered, constrained-width editing
           p.rainbow-mode # Colorize color specs like #bff
+          p.telephone-line # A pretty and configurable mode line
           p.use-package # Configuration macros
         ];
         guiPkgs = p:

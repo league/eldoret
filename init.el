@@ -85,7 +85,10 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
       initial-buffer-choice nil
       initial-scratch-message "")
 
-;;;; Fonts and themes
+
+;;;; Visual interface
+
+;;;;; Fonts and themes
 
 (use-package default-text-scale ;; Adjust font size in all frames
   :no-require t
@@ -99,6 +102,69 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
   ("C-+" #'default-text-scale-increase)
   ("C-_" #'default-text-scale-decrease)
   ("C-|" #'default-text-scale-reset))
+
+(use-package ef-themes ;; Colorful and legible themes
+  :defer t
+  :init
+  (setq ef-themes-mixed-fonts t))
+
+(defun cl/load-initial-theme ()
+  "Load initial theme."
+  (load-theme 'ef-cyprus 'no-confirm))
+
+(add-hook 'emacs-startup-hook #'cl/load-initial-theme)
+
+;;;;; Mode line
+
+(use-package telephone-line ;; A pretty and configurable mode-line
+  :hook
+  (emacs-startup . telephone-line-mode)
+  :config
+  (telephone-line-defsegment* cl/telephone-line-position-segment ()
+    "Displays buffer position, line, and column number.
+If buffer has line numbers already, omit line number from mode line."
+    (progn
+      (ignore face)
+      (list '(-3 "%p")
+            (if (bound-and-true-p display-line-numbers-mode) "" " L%l")
+            " C%c")))
+  ;; (telephone-line-defsegment* cl/telephone-line-evil-tag-segment ()
+  ;;   "Displays the current evil state, abbreviated."
+  ;;   (if (evil-visual-state-p)
+  ;;       (cl-case evil-visual-selection
+  ;;         ('block "Vb")
+  ;;         ('line "Vl")
+  ;;         (t "Vi"))
+  ;;     (ignore face)
+  ;;     (capitalize (seq-take (symbol-name evil-state) 2))))
+  :custom
+  (telephone-line-evil-use-short-tag t)
+  (telephone-line-primary-left-separator 'telephone-line-tan-left)
+  (telephone-line-primary-right-separator 'telephone-line-tan-right)
+  (telephone-line-secondary-left-separator 'telephone-line-tan-hollow-left)
+  (telephone-line-secondary-right-separator 'telephone-line-tan-hollow-right)
+  (telephone-line-lhs
+   '(;; (evil cl/telephone-line-evil-tag-segment)
+     (accent telephone-line-buffer-segment)
+     (nil telephone-line-major-mode-segment) ;; Maybe omit major-mode?
+     (nil telephone-line-minor-mode-segment)))
+  (telephone-line-rhs
+   '((nil telephone-line-misc-info-segment)
+     (accent telephone-line-vc-segment)
+     (evil cl/telephone-line-position-segment))))
+
+;;;;; Margins
+
+(use-package display-fill-column-indicator ;; Light line at right margin
+  :init
+  (add-hook 'prog-mode-hook #'cl/set-fill-column)
+  :hook
+  (prog-mode . display-fill-column-indicator-mode))
+
+(defun cl/set-fill-column (&optional col)
+     "Set ‘fill-column’ to COL (default 80) unless already set locally."
+     (unless (assoc 'fill-column (buffer-local-variables))
+       (setq fill-column (or col 80))))
 
 ;;;; Key bindings
 
