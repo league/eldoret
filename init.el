@@ -140,9 +140,14 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
 If buffer has line numbers already, omit line number from mode line."
     (progn
       (ignore face)
-      (list '(-3 "%p")
-            (if (bound-and-true-p display-line-numbers-mode) "" " L%l")
-            " C%C")))
+      '((-3 "%p") ;; Portion of buffer show: XX%, Top, Bot, All
+        ;; For alignment of Line:Column position, let’s assume 2-digit column
+        ;; number and 4-digit line number, plus the space and leading char.
+        (display-line-numbers-mode
+         (column-number-mode (4 " C%C"))
+         (line-number-mode
+          (column-number-mode (10 " L%l C%C") (6 " L%l"))
+          (column-number-mode (4 " C%C")))))))
   ;; (telephone-line-defsegment* cl/telephone-line-evil-tag-segment ()
   ;;   "Displays the current evil state, abbreviated."
   ;;   (if (evil-visual-state-p)
@@ -190,7 +195,7 @@ If buffer has line numbers already, omit line number from mode line."
   :init
   (setq echo-bar-minibuffer t
         echo-bar-update-interval 3
-        echo-bar-right-padding 0
+        echo-bar-right-padding 2 ;; ≤1 looks bad on TTY
         echo-bar-format
         '((:eval
            (when battery-status-function
@@ -205,7 +210,7 @@ If buffer has line numbers already, omit line number from mode line."
                   (_ bt))))))
           (:eval
            (format-time-string " %H:%M %a %1e %b")))) ; 23:19 Tue 5 Jul
-  (add-hook 'window-state-change-hook #'cl/echo-bar-when-fullscreen)
+  (add-hook 'window-configuration-change-hook #'cl/echo-bar-when-fullscreen)
   :config
   (require 'battery))
 
