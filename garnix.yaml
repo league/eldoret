@@ -1,0 +1,7 @@
+---
+# garnix.yaml — build config for garnix.io CI
+builds:
+  include:
+    - '*.x86_64-linux.*'
+    - packages.x86_64-darwin.default
+    - packages.aarch64-darwin.default
