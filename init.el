@@ -173,7 +173,15 @@ If buffer has line numbers already, omit line number from mode line."
      (accent telephone-line-vc-segment)
      (evil cl/telephone-line-position-segment))))
 
+(add-hook 'prog-mode-hook #'column-number-mode)
+
 ;;;;; Margins
+
+(use-package display-line-numbers ;; Line numbers in left margin
+  :hook
+  (prog-mode . display-line-numbers-mode)
+  :init
+  (setq display-line-numbers-grow-only t))
 
 (use-package display-fill-column-indicator ;; Light line at right margin
   :init
@@ -182,10 +190,9 @@ If buffer has line numbers already, omit line number from mode line."
   (prog-mode . display-fill-column-indicator-mode))
 
 (defun cl/set-fill-column (&optional col)
-     "Set ‘fill-column’ to COL (default 80) unless already set locally."
-     (unless (assoc 'fill-column (buffer-local-variables))
-       (setq fill-column (or col 80))))
-
+  "Set ‘fill-column’ to COL (default 80) unless already set locally."
+  (unless (assoc 'fill-column (buffer-local-variables))
+    (setq fill-column (or col 80))))
 
 ;;;;; Full screen
 
