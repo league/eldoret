@@ -38,11 +38,6 @@
       eachEmacs = mk: lib.listToAttrs (builtins.map mk emacsAttrs);
       defaultEmacs = "emacs";
 
-      # Add a suffix to an attribute name to represent the compiled init file.
-      mkInitAttr = name: name + "-init-elc";
-      mkInitFilename = name: name + "-init.elc";
-      mkTmpEmacsDir = name: "/tmp/dotemax-${name}/";
-
     in {
       # Emacs variants are defined using overlays.  They can vary in build
       # arguments, package selections, etc.
@@ -91,67 +86,68 @@
           inherit name;
           value = pkgs.${name};
         }) // eachEmacs (name: {
-          # Derivation for the byte-compiled init file.  It is used only for
-          # running the configuration as a stand-alone app with “nix run”, but
-          # the package is exported here for dev convenience.  The ‘egrep’ is
-          # because ‘batch-byte-compile’ doesn’t seem to reliably set an exit
-          # status on error.  We also set ‘byte-compile-error-on-warn’ in the
-          # init file itself, so warnings are flagged as errors.
-          name = mkInitAttr name;
-          value = pkgs.runCommand (mkInitFilename name) {
-            buildInputs = [ pkgs.${name} ];
-          } ''
-            set -v
-            cp ${./.}/init.el init.el
-            emacs --batch -f batch-byte-compile init.el |& tee init.log
-            egrep --quiet '^(Error|Cannot)' init.log && false
-            cp init.elc "$out"
-          '';
+          # Derivation for the byte-compiled init file.  It is used only for running
+          # the configuration as a stand-alone app with “nix run”, but the package
+          # is also exported here for dev convenience.  The ‘egrep’ is because
+          # ‘batch-byte-compile’ doesn’t seem to reliably set an exit status on
+          # error.  We also set ‘byte-compile-error-on-warn’ in the init file
+          # itself, so warnings are flagged as errors.
+          name = "${name}-init-elc";
+          value =
+            pkgs.runCommand "init.elc" { buildInputs = [ pkgs.${name} ]; } ''
+              set -v
+              cp ${./.}/init.el ./init.el
+              emacs --batch -f batch-byte-compile init.el |& tee ./init.log
+              egrep --quiet '^(Error|Cannot)' ./init.log && false
+              cp ./init.elc "$out"
+            '';
         }) // {
           default = pkgs.${defaultEmacs};
         });
 
       apps = eachSystem (pkgs:
-        eachEmacs (name: {
-          inherit name;
-          value.type = "app";
-          # To run emacs stand-alone, we use ‘--no-init-file’, but manually call
-          # ‘package-activate-all’ to ensure that autoloads are available, and
-          # then explicitly load the byte-compiled init file.  We also create a
-          # placeholder ‘user-emacs-directory’ in ‘/tmp’ for state files and
-          # customizations.
-          value.program = toString (pkgs.writeShellScript "emacs-standalone" ''
-            set -v
-            mkdir -p "${mkTmpEmacsDir name}"
-            ${pkgs.${name}}/bin/emacs --no-init-file \
-              --eval '(setq user-emacs-directory "${mkTmpEmacsDir name}")' \
-              --load ${./.}/early-init.el \
-              --funcall package-activate-all \
-              --load ${self.packages.${pkgs.system}.${mkInitAttr name}} "$@"
-          '');
-        }) // eachEmacs (name: {
-          name = "${name}-chemacs";
-          value.type = "app";
-          value.program = toString (pkgs.writeShellScript "chemacs" ''
-            set -v
-            ${pkgs.${name}}/bin/emacs --with-profile \
-              '((user-emacs-directory . "$PWD")
-                (nix-elisp-bundle . "${pkgs.${name}.deps}"))'
-          '');
-        }) // {
-          default = self.apps.${pkgs.system}.${defaultEmacs};
-        });
-
-      checks = eachSystem (pkgs:
-        # Each variant should be able to byte-compile the init file.
-        eachEmacs (name: {
-          inherit name;
-          value = self.packages.${pkgs.system}.${mkInitAttr name};
-        }));
+        eachEmacs (name:
+          let
+            tmpHome = "/tmp/eldoret-${name}";
+            initDir = "${tmpHome}/emacs";
+            initElc = self.packages.${pkgs.system}."${name}-init-elc";
+          in {
+            inherit name;
+            value.type = "app";
+            # To run emacs stand-alone, we use ‘--no-init-file’, but manually call
+            # ‘package-activate-all’ to ensure that autoloads are available, and
+            # then explicitly load the byte-compiled init file.  We also create a
+            # placeholder ‘user-emacs-directory’ in ‘/tmp’ for state files and
+            # customizations.
+            value.program = toString
+              (pkgs.writeShellScript "emacs-standalone" ''
+                if [ -f "$HOME/.emacs.el" -o \
+                     -f "$HOME/.emacs" -o \
+                     -d "$HOME/.emacs.d" ]; then
+                    echo -n "Sorry, non-XDG emacs directories "
+                    echo "interfere with a standalone run."
+                else
+                    set -v
+                    mkdir -p "${initDir}"
+                    ln -sf "${./.}/early-init.el" "${initDir}/early-init.el"
+                    ln -sf "${./.}/init.el" "${initDir}/init.el"
+                    ln -sf "${initElc}" "${initDir}/init.elc"
+                    export XDG_CONFIG_HOME="${tmpHome}"
+                    ${pkgs.${name}}/bin/emacs "$@"
+                fi
+              '');
+          }) // {
+            default = self.apps.${pkgs.system}.${defaultEmacs};
+          });
 
       devShells = eachSystem (pkgs: {
         default = pkgs.mkShell {
           buildInputs = [ pkgs.${defaultEmacs} pkgs.nixfmt pkgs.nix-linter ];
+          shellHook = ''
+            echo
+            emacs --batch -f batch-byte-compile init.el
+            echo
+          '';
         };
       });
     };

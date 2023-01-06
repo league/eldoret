@@ -82,9 +82,9 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
 (setq inhibit-startup-buffer-menu t
       inhibit-startup-screen t
       inhibit-startup-echo-area-message "league"
-      initial-buffer-choice nil
+      initial-buffer-choice t
+      initial-major-mode #'fundamental-mode
       initial-scratch-message "")
-
 
 ;;;; Key bindings
 
@@ -190,7 +190,7 @@ If buffer has line numbers already, omit line number from mode line."
   :init
   (setq echo-bar-minibuffer t
         echo-bar-update-interval 3
-        echo-bar-right-padding 2
+        echo-bar-right-padding 0
         echo-bar-format
         '((:eval
            (when battery-status-function
@@ -201,6 +201,7 @@ If buffer has line numbers already, omit line number from mode line."
                 (pcase bt
                   ("charging" "+")
                   ("discharging" "-")
+                  ("fully-charged" "")
                   (_ bt))))))
           (:eval
            (format-time-string " %H:%M %a %1e %b")))) ; 23:19 Tue 5 Jul
