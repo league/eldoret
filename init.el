@@ -79,6 +79,12 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
 
 (use-package no-littering) ;; Keep ‘user-emacs-directory’ clean
 
+(use-package diminish
+  :defer t
+  :commands diminish
+  :config
+  (diminish 'eldoc-mode "edoc"))
+
 ;;;;; Startup dashboard/scratch screen
 
 (setq inhibit-startup-buffer-menu t
@@ -87,6 +93,16 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
       initial-buffer-choice t
       initial-major-mode #'fundamental-mode
       initial-scratch-message "")
+
+;;;; “Yep, here's your problem – someone set this thing to ‘evil’!”
+
+(use-package evil ;; I guess I joined the Dark Side™
+  :init
+  (setq evil-echo-state nil)
+  :hook
+  (emacs-startup . evil-mode)
+  :commands
+  evil-visual-state-p)
 
 ;;;; Key bindings
 
@@ -102,6 +118,28 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
   (setq mac-command-modifier 'meta)
   (setq mac-option-modifier 'super)
   (setq mac-right-option-modifier 'control))
+
+;;;;; Which-key
+
+(use-package which-key
+  :hook
+  (emacs-startup . which-key-mode)
+  :diminish
+  :init
+  (setq which-key-show-early-on-C-h t
+        which-key-idle-delay 0.7
+        which-key-idle-secondary-delay 0.3
+        ;; Arrows and ellipses are too wide in Iosevka.  Setting the following
+        ;; means arrow keys will show up as “left” and “right”.
+        which-key-dont-use-unicode nil
+        which-key-separator " "
+        which-key-add-column-padding 1
+        ;; Unfortunately, operator-state support flubs key seqs?
+        which-key-show-operator-state-maps nil)
+  :config
+  ;; Disable ‘help-for-help’ because which-key does a better job when ‘help-map’
+  ;; is open (and ‹C-h› interferes with which-key scrolling).
+  (general-unbind :keymaps 'help-map "?" "<f1>" "<help>" "C-h" "C-s" "q"))
 
 ;;;; Visual interface
 
@@ -133,44 +171,73 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
 
 ;;;;; Mode line
 
+(use-package cyphejor
+  :defer t
+  :commands
+  cyphejor--cypher
+  :init
+  (setq cyphejor-rules
+        '(("mode" "")
+          ("emacs" "e")
+          ("fundamental" "Ø")
+          ("inferior" "i" :prefix)
+          ("interaction" "i" :prefix)
+          ("interactive" "i" :prefix)
+          ("python" "Py")
+          :upcase)))
+
 (use-package telephone-line ;; A pretty and configurable mode-line
   :hook
   (emacs-startup . telephone-line-mode)
+  :commands
+  telephone-line-minor-mode-segment
   :config
   (telephone-line-defsegment* cl/telephone-line-position-segment ()
     "Displays buffer position, line, and column number.
 If buffer has line numbers already, omit line number from mode line."
-    (progn
+    `((-3 "%p") ;; Portion of buffer show: XX%, Top, Bot, All
+      (ignore ,face)
+      (display-line-numbers-mode
+       (column-number-mode " C%2C")
+       (line-number-mode
+        (column-number-mode " L%2l C%2C" " L%2l")
+        (column-number-mode " C%2C")))))
+  (telephone-line-defsegment* cl/telephone-line-modes-segment ()
+    "Displays abbreviated major and then minor mode information."
+    (let ((rec-edit-help "Recursive edit, ‹C-M-c› to pop")
+          (maj-name (symbol-name major-mode)))
+      `((:propertize "%[" help-echo ,rec-edit-help face ,face)
+        (:propertize
+         ,(cyphejor--cypher maj-name cyphejor-rules)
+         help-echo ,(concat maj-name "\n\
+mouse-1: Display major mode menu\n\
+mouse-2: Show help for major mode\n\
+mouse-3: Toggle minor modes")
+         mouse-face mode-line-highlight
+         local-map ,mode-line-major-mode-keymap
+         face ,face)
+        (:propertize "%]" help-echo ,rec-edit-help face ,face)
+        ,(funcall (telephone-line-minor-mode-segment) face))))
+  (telephone-line-defsegment* cl/telephone-line-evil-tag-segment ()
+    "Displays the current evil state, abbreviated."
+    (if (evil-visual-state-p)
+        (cl-case evil-visual-selection
+          ('block "Vb")
+          ('line "Vl")
+          (t "Vi"))
       (ignore face)
-      '((-3 "%p") ;; Portion of buffer show: XX%, Top, Bot, All
-        ;; For alignment of Line:Column position, let’s assume 2-digit column
-        ;; number and 4-digit line number, plus the space and leading char.
-        (display-line-numbers-mode
-         (column-number-mode (4 " C%C"))
-         (line-number-mode
-          (column-number-mode (10 " L%l C%C") (6 " L%l"))
-          (column-number-mode (4 " C%C")))))))
-  ;; (telephone-line-defsegment* cl/telephone-line-evil-tag-segment ()
-  ;;   "Displays the current evil state, abbreviated."
-  ;;   (if (evil-visual-state-p)
-  ;;       (cl-case evil-visual-selection
-  ;;         ('block "Vb")
-  ;;         ('line "Vl")
-  ;;         (t "Vi"))
-  ;;     (ignore face)
-  ;;     (capitalize (seq-take (symbol-name evil-state) 2))))
-  :custom
-  (telephone-line-evil-use-short-tag t)
-  (telephone-line-primary-left-separator 'telephone-line-tan-left)
-  (telephone-line-primary-right-separator 'telephone-line-tan-right)
-  (telephone-line-secondary-left-separator 'telephone-line-tan-hollow-left)
-  (telephone-line-secondary-right-separator 'telephone-line-tan-hollow-right)
-  (telephone-line-lhs
-   '(;; (evil cl/telephone-line-evil-tag-segment)
+      (capitalize (seq-take (symbol-name evil-state) 2))))
+  (setq
+   telephone-line-evil-use-short-tag t
+   telephone-line-primary-left-separator 'telephone-line-tan-left
+   telephone-line-primary-right-separator 'telephone-line-tan-right
+   telephone-line-secondary-left-separator 'telephone-line-tan-hollow-left
+   telephone-line-secondary-right-separator 'telephone-line-tan-hollow-right
+   telephone-line-lhs
+   '((evil cl/telephone-line-evil-tag-segment)
      (accent telephone-line-buffer-segment)
-     (nil telephone-line-major-mode-segment) ;; Maybe omit major-mode?
-     (nil telephone-line-minor-mode-segment)))
-  (telephone-line-rhs
+     (nil cl/telephone-line-modes-segment))
+   telephone-line-rhs
    '((nil telephone-line-misc-info-segment)
      (accent telephone-line-vc-segment)
      (evil cl/telephone-line-position-segment))))
@@ -293,16 +360,13 @@ can help."
 
 (use-package rainbow-mode ;; Colorize color specs like #bff
   :hook emacs-lisp-mode nix-mode
+  :diminish "Rb"
   :config
   ;; Usually, colorizing plain words like red and RoyalBlue is distracting.
   (setq rainbow-x-colors-major-mode-list nil))
 
 (use-package avy ;; Jump to arbitrary positions in visible text
   :bind (("C-c a" . avy-goto-line)))
-
-;;;;; Languages
-
-(use-package nix-mode :defer)
 
 ;;;; Afterword
 ;; Local Variables:

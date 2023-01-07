@@ -45,15 +45,25 @@
         ttyPkgs = p: [
           p.auto-compile # Automatically (re-)compile elisp code
           p.avy # Jump to arbitrary positions in visible text
+          p.cyphejor # Abbreviate major-mode names
+          p.diminish # Remove or abbreviate minor-mode indicators
+          p.dockerfile-mode # Major mode for editing Dockerfiles
           p.echo-bar # Turn echo area into a custom status bar
           p.ef-themes # Colorful and legible themes
+          p.elm-mode # Major mode for Elm language
+          p.evil # I guess I joined the Dark Side™
           p.general # Convenient macros for keybindings
+          p.markdown-mode # Major mode for Markdown-formatted text
           p.nix-mode # Language mode for nix expressions
           p.no-littering # Keep ‘user-emacs-directory’ clean
           p.olivetti # Centered, constrained-width editing
+          p.php-mode # Major mode for PHP language
           p.rainbow-mode # Colorize color specs like #bff
           p.telephone-line # A pretty and configurable mode line
+          p.typescript-mode # Major mode for Typescript language
           p.use-package # Configuration macros
+          p.which-key # Display available keybindings in a pop-up
+          p.yaml-mode # Major mode for editing YAML files
         ];
         guiPkgs = p:
           ttyPkgs p ++ [
