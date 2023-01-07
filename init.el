@@ -160,6 +160,25 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
   ("C-_" #'default-text-scale-decrease)
   ("C-|" #'default-text-scale-reset))
 
+(use-package fontaine ;; Set font configurations using presets
+  :no-require t
+  :if (locate-library "fontaine")
+  :defines fontaine-presets
+  :commands fontaine-set-preset
+  :defer t
+  :init
+  (setq fontaine-presets
+        '((plex
+           :default-family "IBM Plex Mono"
+           :default-height 160
+           :line-spacing 0
+           :variable-pitch-family "IBM Plex Serif"
+           :variable-pitch-height 1.0)))
+  (add-hook 'emacs-startup-hook #'cl/fontaine-initial-preset))
+
+(defun cl/fontaine-initial-preset ()
+  (fontaine-set-preset 'plex))
+
 (use-package ef-themes ;; Colorful and legible themes
   :defer t
   :init
@@ -369,6 +388,11 @@ can help."
 
 (use-package avy ;; Jump to arbitrary positions in visible text
   :bind (("C-c a" . avy-goto-line)))
+
+;;;;; Revision control
+
+(use-package magit ;; A git porcelain inside Emacs
+  :defer t)
 
 ;;;; Afterword
 

@@ -53,6 +53,7 @@
           p.elm-mode # Major mode for Elm language
           p.evil # I guess I joined the Dark Side™
           p.general # Convenient macros for keybindings
+          p.magit # A git porcelain inside Emacs
           p.markdown-mode # Major mode for Markdown-formatted text
           p.nix-mode # Language mode for nix expressions
           p.no-littering # Keep ‘user-emacs-directory’ clean
@@ -69,6 +70,7 @@
           ttyPkgs p ++ [
             p.benchmark-init # Record times for ‘require’ and ‘load’ calls
             p.default-text-scale # Adjust font size in all frames
+            p.fontaine # Set font configurations using presets
           ];
       in _final: prev: {
         emacs-nox = setMainProgram (prev.emacs-nox.pkgs.withPackages ttyPkgs);
