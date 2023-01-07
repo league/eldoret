@@ -77,7 +77,9 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
   :hook (emacs-lisp-mode . auto-compile-on-save-mode)
   :commands auto-compile-on-load-mode)
 
-(use-package no-littering) ;; Keep ‘user-emacs-directory’ clean
+(use-package no-littering ;; Keep ‘user-emacs-directory’ clean
+  :config
+  (setq custom-file (expand-file-name "custom.el" no-littering-etc-directory)))
 
 (use-package diminish
   :defer t
@@ -369,6 +371,10 @@ can help."
   :bind (("C-c a" . avy-goto-line)))
 
 ;;;; Afterword
+
+(when (file-exists-p custom-file)
+  (load custom-file))
+
 ;; Local Variables:
 ;; indent-tabs-mode: nil
 ;; byte-compile-error-on-warn: t
