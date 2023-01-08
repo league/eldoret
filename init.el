@@ -2,6 +2,14 @@
 
 ;;; Commentary:
 
+;; DONE Need an alternative to ‹ESC› to return to normal state.
+
+;; DONE I'd like magit to open full-window, rather than a new, half other-window
+
+;; TODO Implement hl-todo.
+
+;; TODO ‘outline-minor-mode’ is missing keys I’m accustomed to, like ‹zB›
+
 ;;; Code:
 
 ;;;; Preliminaries
@@ -143,6 +151,35 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
   ;; is open (and ‹C-h› interferes with which-key scrolling).
   (general-unbind :keymaps 'help-map "?" "<f1>" "<help>" "C-h" "C-s" "q"))
 
+;;;;; Some evil shortcuts
+
+(use-package evil-escape
+  :diminish
+  :init
+  ;; Grepping words file to find a 2-letter sequence that's easy to type on
+  ;; Dvorak but rare in words:
+  ;; 3618 th – Obviously not workable, but just for comparison
+  ;;  918 ht – This would be ideal position, but far too common.
+  ;;  317 hl
+  ;;   93 lh
+  ;;   11 kj
+  ;;   11 gc – Mostly “eggcup” and “dogcart”, might be usable.
+  ;;    2 jk – Good, but might prefer right hand [Notice the 2× “ht”]
+  ;;    1 cg – Bingo!?
+  (setq evil-escape-key-sequence "cg")
+
+  ;; The ‘evil-escape-delay’ seems pretty well-tuned at 0.1.  I can type a
+  ;; sequence of them in insert state – cgcgcgcgcgcgcgcg – even fairly quickly,
+  ;; as long as I use a regular rhythm.  Activating the escape is more like
+  ;; hitting a “grace note.”  Also should check how it escapes from things other
+  ;; than insert mode.  When in a visual selection, ‹c› to change, and then ‹g›
+  ;; to insert that letter seems okay.
+
+  ;; Remember, we can also use the ‘evil-escape’ to quit transients like help
+  ;; mode, magit, etc.
+  :hook
+  (emacs-startup . evil-escape-mode))
+
 ;;;; Visual interface
 
 ;;;;; Fonts and themes
@@ -156,9 +193,9 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
   ;; firefox (works with or without shift) — they don't need to be
   ;; usable from TTY.
   :general
-  ("C-+" #'default-text-scale-increase)
-  ("C-_" #'default-text-scale-decrease)
-  ("C-|" #'default-text-scale-reset))
+  ("C-+" #'default-text-scale-increase
+   "C-_" #'default-text-scale-decrease
+   "C-|" #'default-text-scale-reset))
 
 (use-package fontaine ;; Set font configurations using presets
   :no-require t
@@ -177,6 +214,7 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
   (add-hook 'emacs-startup-hook #'cl/fontaine-initial-preset))
 
 (defun cl/fontaine-initial-preset ()
+  "Configure initial font set."
   (fontaine-set-preset 'plex))
 
 (use-package ef-themes ;; Colorful and legible themes
@@ -387,12 +425,24 @@ can help."
   (setq rainbow-x-colors-major-mode-list nil))
 
 (use-package avy ;; Jump to arbitrary positions in visible text
-  :bind (("C-c a" . avy-goto-line)))
+  :general
+  ("C-c a" #'avy-goto-line))
 
 ;;;;; Revision control
 
 (use-package magit ;; A git porcelain inside Emacs
-  :defer t)
+  :config
+  (add-hook 'magit-post-display-buffer-hook #'cl/magit-post-display-buffer)
+  :general
+  (:states 'normal
+           "ZG" #'magit-status))
+
+(defun cl/magit-post-display-buffer ()
+  "Ensure that ‘magit-status’ interface takes up entire frame."
+  ;; For some discussion on this issue, see
+  ;; https://emacs.stackexchange.com/questions/17724/
+  (when (provided-mode-derived-p major-mode 'magit-status-mode)
+    (delete-other-windows)))
 
 ;;;; Afterword
 

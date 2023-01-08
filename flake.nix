@@ -52,6 +52,7 @@
           p.ef-themes # Colorful and legible themes
           p.elm-mode # Major mode for Elm language
           p.evil # I guess I joined the Dark Side™
+          p.evil-escape # Escape from anything with a customizable key sequence
           p.general # Convenient macros for keybindings
           p.magit # A git porcelain inside Emacs
           p.markdown-mode # Major mode for Markdown-formatted text
