@@ -54,6 +54,7 @@
           p.evil # I guess I joined the Dark Side™
           p.evil-escape # Escape from anything with a customizable key sequence
           p.general # Convenient macros for keybindings
+          p.hl-todo # Highlight “TO-DO” and similar keywords
           p.magit # A git porcelain inside Emacs
           p.markdown-mode # Major mode for Markdown-formatted text
           p.nix-mode # Language mode for nix expressions

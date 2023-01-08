@@ -6,7 +6,9 @@
 
 ;; DONE I'd like magit to open full-window, rather than a new, half other-window
 
-;; TODO Implement hl-todo.
+;; DONE Implement hl-todo.
+
+;; TODO In TTY emacs, support cursor changes
 
 ;; TODO ‘outline-minor-mode’ is missing keys I’m accustomed to, like ‹zB›
 
@@ -93,7 +95,9 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
   :defer t
   :commands diminish
   :config
-  (diminish 'eldoc-mode "edoc"))
+  (diminish 'eldoc-mode "edoc")
+  (with-eval-after-load 'autorevert
+    (diminish 'auto-revert-mode)))
 
 ;;;;; Startup dashboard/scratch screen
 
@@ -108,7 +112,8 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
 
 (use-package evil ;; I guess I joined the Dark Side™
   :init
-  (setq evil-echo-state nil)
+  (setq evil-echo-state nil
+        evil-want-C-h-delete t)
   :hook
   (emacs-startup . evil-mode)
   :commands
@@ -443,6 +448,16 @@ can help."
   ;; https://emacs.stackexchange.com/questions/17724/
   (when (provided-mode-derived-p major-mode 'magit-status-mode)
     (delete-other-windows)))
+
+;;;;; Documentation
+
+(use-package hl-todo ;; Highlight “TO-DO” and similar keywords
+  :hook
+  ((prog-mode ledger-mode latex-mode) . hl-todo-mode)
+  :general
+  (:states 'motion
+           "]t" #'hl-todo-next
+           "[t" #'hl-todo-previous))
 
 ;;;; Afterword
 
