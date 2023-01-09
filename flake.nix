@@ -53,6 +53,7 @@
           p.elm-mode # Major mode for Elm language
           p.evil # I guess I joined the Dark Side™
           p.evil-escape # Escape from anything with a customizable key sequence
+          p.evil-terminal-cursor-changer # Cursor shape & color in terminal
           p.general # Convenient macros for keybindings
           p.hl-todo # Highlight “TO-DO” and similar keywords
           p.magit # A git porcelain inside Emacs

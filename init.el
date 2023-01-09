@@ -8,7 +8,7 @@
 
 ;; DONE Implement hl-todo.
 
-;; TODO In TTY emacs, support cursor changes
+;; DONE In TTY emacs, support cursor changes
 
 ;; TODO ‘outline-minor-mode’ is missing keys I’m accustomed to, like ‹zB›
 
@@ -220,7 +220,8 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
 
 (defun cl/fontaine-initial-preset ()
   "Configure initial font set."
-  (fontaine-set-preset 'plex))
+  (when (display-multi-font-p)
+    (fontaine-set-preset 'plex)))
 
 (use-package ef-themes ;; Colorful and legible themes
   :defer t
@@ -367,6 +368,23 @@ can help."
        ;; just to turn it off, if it hasn't been used yet!
        (if (bound-and-true-p echo-bar-mode)
            (echo-bar-mode -1)))))
+
+;;;;; TTY
+
+(use-package evil-terminal-cursor-changer ;; Cursor shape & color in terminal
+  :defer t
+  :commands
+  evil-terminal-cursor-changer-activate)
+
+(defun cl/tty-setup ()
+  (evil-terminal-cursor-changer-activate)
+  ;; https://lists.gnu.org/archive/html/help-gnu-emacs/2008-06/msg00159.html
+  (unless standard-display-table
+    (setq standard-display-table (make-display-table)))
+  (set-display-table-slot standard-display-table 'vertical-border
+                          (make-glyph-code ?│)))
+
+(add-hook 'after-init-hook #'cl/tty-setup)
 
 ;;;; File system
 
