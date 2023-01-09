@@ -10,6 +10,8 @@
 
 ;; DONE In TTY emacs, support cursor changes
 
+;; TODO Possible to do default-text-scale just for current frame?
+
 ;; TODO ‘outline-minor-mode’ is missing keys I’m accustomed to, like ‹zB›
 
 ;;; Code:
@@ -216,12 +218,20 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
            :line-spacing 0
            :variable-pitch-family "IBM Plex Serif"
            :variable-pitch-height 1.0)))
-  (add-hook 'emacs-startup-hook #'cl/fontaine-initial-preset))
+  ;; Apply the initial preset when starting a graphical frame right away.
+  (add-hook 'emacs-startup-hook #'cl/fontaine-initial-preset)
+  ;; Apply the initial preset when creating a new frame (perhaps via daemon).
+  (add-hook 'after-make-frame-functions #'cl/fontaine-initial-preset))
 
-(defun cl/fontaine-initial-preset ()
-  "Configure initial font set."
-  (when (display-multi-font-p)
-    (fontaine-set-preset 'plex)))
+(defun cl/fontaine-initial-preset (&optional frame)
+  "Configure initial font set for FRAME."
+  (unless frame
+    (setq frame (selected-frame)))
+  (when (display-multi-font-p frame)
+    ;; We’re seeing "Face height does not produce a positive integer" during
+    ;; ‘fontaine--apply-bold-preset’, but otherwise it seems to work.
+    (with-demoted-errors "Fontaine error: %S"
+      (fontaine-set-preset 'plex frame))))
 
 (use-package ef-themes ;; Colorful and legible themes
   :defer t
