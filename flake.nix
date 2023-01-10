@@ -6,7 +6,13 @@
     inputs.nixpkgs.follows = "nixpkgs";
   };
 
-  outputs = { self, nixpkgs, emacs-overlay, ... }:
+  # My own fork of notmuch mail indexer, with more sorting options.
+  inputs.notmuch-sort-fork = {
+    url = "github:league/notmuch/sort";
+    inputs.nixpkgs.follows = "nixpkgs";
+  };
+
+  outputs = { self, nixpkgs, emacs-overlay, notmuch-sort-fork, ... }:
     let
       inherit (nixpkgs) lib;
 
@@ -18,8 +24,11 @@
           mk (import nixpkgs {
             inherit system;
             overlays = [
+              # Ordering of overlays is important! We need notmuch-sort-fork
+              # to come AFTER emacs-overlay.
               emacs-overlay.overlays.package
               emacs-overlay.overlays.emacs
+              notmuch-sort-fork.overlays.default
               self.overlays.default
               self.overlays.packageBuild
             ];
@@ -79,9 +88,15 @@
             p.default-text-scale # Adjust font size in all frames
             p.fontaine # Set font configurations using presets
           ];
+        mailPkgs = p:
+          guiPkgs p ++ [
+            p.notmuch # Run notmuch email indexer within emacs
+            p.ol-notmuch # Org links to notmuch messages and threads
+          ];
       in _final: prev: {
         emacs-nox = setMainProgram (prev.emacs-nox.pkgs.withPackages ttyPkgs);
         emacs = setMainProgram (prev.emacs.pkgs.withPackages guiPkgs);
+        emacs-mail = setMainProgram (prev.emacs.pkgs.withPackages mailPkgs);
       };
 
       # This overlay tweaks the packageBuild tool so that all packages built

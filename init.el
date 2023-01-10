@@ -359,17 +359,17 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
 (use-package fontaine ;; Set font configurations using presets
   :no-require t
   :if (locate-library "fontaine")
-  :defines fontaine-presets
   :commands fontaine-set-preset
   :defer t
+  :custom
+  (fontaine-presets
+   '((plex
+      :default-family "IBM Plex Mono"
+      :default-height 160
+      :line-spacing 0
+      :variable-pitch-family "IBM Plex Serif"
+      :variable-pitch-height 1.0)))
   :init
-  (setq fontaine-presets
-        '((plex
-           :default-family "IBM Plex Mono"
-           :default-height 160
-           :line-spacing 0
-           :variable-pitch-family "IBM Plex Serif"
-           :variable-pitch-height 1.0)))
   ;; Apply the initial preset when starting a graphical frame right away.
   (add-hook 'emacs-startup-hook #'cl/fontaine-initial-preset)
   ;; Apply the initial preset when creating a new frame (perhaps via daemon).
@@ -666,7 +666,7 @@ can help."
   :config
   (add-hook 'magit-post-display-buffer-hook #'cl/magit-post-display-buffer)
   :general
-  (:states 'normal
+  (:states 'motion
            "ZG" #'magit-status))
 
 (defun cl/magit-post-display-buffer ()
@@ -697,6 +697,56 @@ can help."
    :states 'motion
    "]t" #'hl-todo-next
    "[t" #'hl-todo-previous))
+
+;;;; Email
+
+(use-package notmuch ;; Run notmuch email indexer within emacs
+  :no-require t
+  :if (locate-library "notmuch")
+  :defer t
+  :custom
+  (notmuch-hello-thousands-separator ",")
+  (notmuch-show-all-tags-list t)
+  (notmuch-always-prompt-for-sender t)
+  (notmuch-fcc-dirs
+   '(("league@contrapunctus.net" . "cng/Sent +sent -unread -inbox")
+     ("christopher.league@liu.edu" . "\"liu/Sent Items\" +sent -unread -inbox")
+     ("heychris@commandline.tv" . "cltv/Sent +sent -unread")))
+  (notmuch-search-line-faces
+   '(("unread" . notmuch-search-unread-face)
+     ("flagged" . notmuch-search-flagged-face)
+     ("deleted" . (:strike-through t))))
+  (notmuch-tagging-keys
+   '(("a" notmuch-archive-tags "Archive")
+     ("c" ("+chime" "-inbox" "-unread") "CHIME FRB")
+     ("d" ("+deleted" "-inbox" "-unread") "Delete")
+     ("f" ("+flagged") "Flag")
+     ("n" ("+needs-filter" "-inbox" "-unread") "Needs filter")
+     ("s" ("+spam" "-inbox") "Mark as spam")
+     ("t" ("+tca" "-inbox" "-unread") "TCA message")
+     ("u" notmuch-show-mark-read-tags "Mark read")
+     ("w" ("+waiting" "-inbox" "-unread") "Waiting")))
+  (notmuch-search-sort-order 'newest-first)
+  (notmuch-saved-searches
+   '((:name "inbox" :query "tag:inbox and (not tag:bulk)" :key "i")
+     (:name "bulk" :query "tag:inbox and tag:bulk" :key "b")
+     (:name "flagged" :query "tag:flagged" :key "f")
+     (:name "sent recently" :query "tag:sent and date:-2M..now" :key "r")
+     (:name "tca" :query "tag:tca and date:2021-12-01.." :key "t")
+     (:name "needs filter (gandi)" :query "tag:needs-filter and folder:/^cng/"
+            :key "n")
+     (:name "needs filter (liu)" :query "tag:needs-filter and folder:/^liu/"
+            :key "l")
+     (:name "waiting" :query "tag:waiting" :key "w")
+     (:name "emacs-bug unread" :query "tag:emacs-bug is:unread" :key "e")
+     (:name "orgmode unread" :query "tag:orgmode is:unread" :key "o")))
+  :general
+  ([remap compose-mail] #'notmuch-mua-new-mail))
+
+(use-package ol-notmuch
+  :no-require t
+  :if (locate-library "ol-notmuch")
+  :after ol)
 
 ;;;; Afterword
 
