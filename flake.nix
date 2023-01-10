@@ -51,13 +51,15 @@
           p.echo-bar # Turn echo area into a custom status bar
           p.ef-themes # Colorful and legible themes
           p.elm-mode # Major mode for Elm language
-          p.evil # I guess I joined the Dark Side™
+          p.evil-collection # Further keybindings and tools for Evil
           p.evil-escape # Escape from anything with a customizable key sequence
+          p.evil # I guess I joined the Dark Side™
           p.evil-terminal-cursor-changer # Cursor shape & color in terminal
           p.general # Convenient macros for keybindings
           p.hl-todo # Highlight “TO-DO” and similar keywords
           p.magit # A git porcelain inside Emacs
           p.markdown-mode # Major mode for Markdown-formatted text
+          p.modus-themes # Elegant, highly legible and customizable themes
           p.nix-mode # Language mode for nix expressions
           p.no-littering # Keep ‘user-emacs-directory’ clean
           p.olivetti # Centered, constrained-width editing
@@ -65,6 +67,7 @@
           p.rainbow-mode # Colorize color specs like #bff
           p.telephone-line # A pretty and configurable mode line
           p.typescript-mode # Major mode for Typescript language
+          p.undo-tree # Treat undo history as a tree
           p.use-package # Configuration macros
           p.which-key # Display available keybindings in a pop-up
           p.yaml-mode # Major mode for editing YAML files

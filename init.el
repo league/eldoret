@@ -8,9 +8,18 @@
 
 ;; DONE Implement hl-todo.
 
-;; DONE In TTY emacs, support cursor changes
+;; DONE In TTY Emacs, support cursor changes
 
-;; TODO Possible to do default-text-scale just for current frame?
+;; DONE Possible to do default-text-scale just for current frame? → Doesn't seem
+;; so, but anyway I rarely use multiple frames.
+
+;; DONE evil-undo-system
+
+;; DONE Also bind M-z, M-c, M-g to go to normal state, like evil-escape
+
+;; TODO Need evil in more places, including minibuffer.
+
+;; DONE Want a shortcut for saving, probably just ‹s›.
 
 ;; TODO ‘outline-minor-mode’ is missing keys I’m accustomed to, like ‹zB›
 
@@ -108,25 +117,70 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
       inhibit-startup-echo-area-message "league"
       initial-buffer-choice t
       initial-major-mode #'fundamental-mode
-      initial-scratch-message "")
+      initial-scratch-message ""
+      confirm-kill-emacs #'y-or-n-p
+      blink-cursor-interval 0.25)
+
+(use-package server
+  :defer t
+  :commands server-running-p
+  :init
+  (add-hook 'emacs-startup-hook
+            (defun cl/start-server ()
+              (unless (server-running-p)
+                (server-mode)))))
 
 ;;;; “Yep, here's your problem – someone set this thing to ‘evil’!”
 
 (use-package evil ;; I guess I joined the Dark Side™
   :init
+  ;; DONE consider ‘evil-respect-visual-line-mode’
+  ;; TODO I was never happy with ‘evil-complete-next-func’ ‹C-n›
   (setq evil-echo-state nil
-        evil-want-C-h-delete t)
+        evil-want-C-u-delete t
+        evil-want-C-u-scroll t          ; DONE Need to bind ‘universal-argument’
+        evil-want-C-h-delete t
+        evil-want-fine-undo t       ; I hope fine undo isn’t what wrecks repeat.
+        evil-respect-visual-line-mode t
+        evil-undo-system 'undo-tree
+        evil-want-keybinding nil)       ; Use evil-collection instead.
   :hook
   (emacs-startup . evil-mode)
   :commands
-  evil-visual-state-p)
+  evil-visual-state-p
+  :config
+  (general-define-key
+   ;; Keys bound in motion state are inherited in normal, visual, and
+   ;; operator state keymaps if they are not shadowed.
+   :states 'motion
+   ;; Like vim, we’re using ‹C-u› in normal state for scroll-up, and in insert
+   ;; state for delete-to-beginning.  So let's bind capital ‹U› (otherwise
+   ;; undefined) to ‘universal-argument’ in normal state. In insert state, I
+   ;; think we'd only want an argument for repeating characters, and for that you
+   ;; could do ‹M-1 M-0 *›, for example.
+   "U" #'universal-argument)
+  (general-define-key
+   :states '(motion normal)
+   ;; Saving: The ‹s› key in normal/visual states is pretty redundant.  In
+   ;; normal, it’s equivalent to ‹cl› (substitute one character and continue
+   ;; inserting).  In visual mode, it’s equivalent to ‹c› (change region).
+   "s" #'save-buffer
+   "M-s" #'save-some-buffers))
+
+(use-package undo-tree
+  :diminish "Un" ; TODO Probably completely diminish once I've settled on ‘undo-tree’
+  :hook          ; DONE Bind ‘undo-tree-visualize’, default on ‹C-x u›
+  (evil-local-mode . turn-on-undo-tree-mode)
+  :general
+  (:states 'motion
+           "g/" #'undo-tree-visualize))
 
 ;;;; Key bindings
 
 ;;;;; MacOS modifiers
 
-;; Need ‘defvar’ to avoid byte-compile warnings on Linux, but setting values within the here does not
-;; take effect on Darwin.
+;; Need ‘defvar’ to avoid byte-compile warnings on Linux, but setting values
+;; within the here does not take effect on Darwin.
 (defvar mac-command-modifier)
 (defvar mac-option-modifier)
 (defvar mac-right-option-modifier)
@@ -169,10 +223,11 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
   ;;  918 ht – This would be ideal position, but far too common.
   ;;  317 hl
   ;;   93 lh
+  ;;   49 wm – I like this one, except “lawmaker” “sawmill”, “showman”, etc.
   ;;   11 kj
   ;;   11 gc – Mostly “eggcup” and “dogcart”, might be usable.
   ;;    2 jk – Good, but might prefer right hand [Notice the 2× “ht”]
-  ;;    1 cg – Bingo!?
+  ;;    1 cg – Bingo!? Just the string “cg” itself is in the words file.
   (setq evil-escape-key-sequence "cg")
 
   ;; The ‘evil-escape-delay’ seems pretty well-tuned at 0.1.  I can type a
@@ -182,10 +237,19 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
   ;; than insert mode.  When in a visual selection, ‹c› to change, and then ‹g›
   ;; to insert that letter seems okay.
 
+  ;; Let’s allow unordered, so both ‹cg› and ‹gc› work.  Then treat it as a
+  ;; chord in addition to grace note, hitting both more-or-less simultaneously.
+  (setq evil-escape-unordered-key-sequence t)
+
   ;; Remember, we can also use the ‘evil-escape’ to quit transients like help
   ;; mode, magit, etc.
   :hook
-  (emacs-startup . evil-escape-mode))
+  (emacs-startup . evil-escape-mode)
+  :general
+  (:states '(motion insert)
+           "M-z" #'evil-escape
+           "M-g" #'evil-escape
+           "M-c" #'evil-escape))
 
 ;;;; Visual interface
 
@@ -387,6 +451,7 @@ can help."
   evil-terminal-cursor-changer-activate)
 
 (defun cl/tty-setup ()
+  "Configure stuff related to terminal use, such as cursor and border glyphs."
   (evil-terminal-cursor-changer-activate)
   ;; https://lists.gnu.org/archive/html/help-gnu-emacs/2008-06/msg00159.html
   (unless standard-display-table
