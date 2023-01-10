@@ -17,9 +17,11 @@
 
 ;; DONE Also bind M-z, M-c, M-g to go to normal state, like evil-escape
 
-;; TODO Need evil in more places, including minibuffer.
+;; DONE Need evil in more places, including minibuffer.
 
 ;; DONE Want a shortcut for saving, probably just ‹s›.
+
+;; DONE repeat-mode and some relevant maps
 
 ;; TODO ‘outline-minor-mode’ is missing keys I’m accustomed to, like ‹zB›
 
@@ -115,7 +117,7 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
 (setq inhibit-startup-buffer-menu t
       inhibit-startup-screen t
       inhibit-startup-echo-area-message "league"
-      initial-buffer-choice t
+      initial-buffer-choice nil
       initial-major-mode #'fundamental-mode
       initial-scratch-message ""
       confirm-kill-emacs #'y-or-n-p
@@ -141,6 +143,7 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
 ;;;; “Yep, here's your problem – someone set this thing to ‘evil’!”
 
 (eval-and-compile
+  (setq evil-want-keybinding nil)
   (require 'evil-macros))
 
 (use-package evil ;; I guess I joined the Dark Side™
@@ -153,8 +156,7 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
         evil-want-C-h-delete t
         evil-want-fine-undo t       ; I hope fine undo isn’t what wrecks repeat.
         evil-respect-visual-line-mode t
-        evil-undo-system 'undo-tree
-        evil-want-keybinding nil)       ; Use evil-collection instead.
+        evil-undo-system 'undo-tree)
   :hook
   (emacs-startup . evil-mode)
   :config
@@ -189,6 +191,10 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
   :diminish ; DONE Probably completely diminish once I've settled on ‘undo-tree’
   :hook     ; DONE Bind ‘undo-tree-visualize’, default on ‹C-x u›
   (evil-local-mode . turn-on-undo-tree-mode)
+  :config
+  (defadvice undo-tree-make-history-save-file-name
+      (after undo-tree activate)
+    (setq ad-return-value (concat ad-return-value ".gz")))
   :general
   (:states 'motion
            "g/" #'undo-tree-visualize))
@@ -268,6 +274,70 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
            "M-z" #'evil-escape
            "M-g" #'evil-escape
            "M-c" #'evil-escape))
+
+;;;;; Evil all the things!
+
+(use-package evil-collection ;; Further keybindings and tools for Evil
+  :commands evil-collection-init
+  :init
+  (setq evil-collection-setup-minibuffer t
+        evil-collection-always-run-setup-hook-after-load t)
+  (with-eval-after-load 'evil
+    (evil-collection-init))
+  :config
+  (diminish 'evil-collection-unimpaired-mode)
+  ;; The commands that begin with ‘evil-collection-unimpaired’ should have
+  ;; abbreviations applied to ‘which-key’ presentation.
+  (with-eval-after-load 'which-key
+    (add-to-list 'which-key-replacement-alist
+                 '((nil . "^evil-collection-unimpaired-")
+                   nil . "ecu⠶"))))
+
+(use-package evil-collection-unimpaired
+  :defer t
+  :diminish
+  :init
+  (setq evil-collection-unimpaired-want-repeat-mode-integration t))
+
+;;;;; Repeatable bindings
+
+(use-package repeat ;; Simple way to repeat previous & related commands
+  :init
+  ;; Can also set timeout separately for different commands using symbol
+  ;; properties.
+  (setq repeat-exit-timeout 3)
+  :hook
+  (emacs-startup . repeat-mode))
+
+(defvar cl/evil-win-next-repeat-map
+    (let ((map (make-sparse-keymap)))
+      (pcase-dolist
+          (`(,key ,sym)
+           '(("w" evil-window-next)
+             ("W" evil-window-prev)))
+        (define-key map key sym)
+        (put sym 'repeat-map 'cl/evil-win-next-repeat-map))
+      map)
+    "Keymap for repetition of Evil next/previous window commands.")
+
+(defvar cl/evil-win-size-repeat-map
+  (let ((map (make-sparse-keymap)))
+    (pcase-dolist
+        (`(,key ,sym)
+         '(("-" evil-window-decrease-height)
+           ("+" evil-window-increase-height)
+           ("=" evil-window-increase-height)
+           ("_" evil-window-set-height)
+           ("<" evil-window-decrease-width)
+           ("," evil-window-decrease-width)
+           (">" evil-window-increase-width)
+           ("." evil-window-increase-width)
+           ("|" evil-window-set-width)
+           ("/" shrink-window-if-larger-than-buffer)))
+      (define-key map key sym)
+      (put sym 'repeat-map 'cl/evil-win-size-repeat-map))
+    map)
+  "Keymap for repetition of Evil window resizing commands.")
 
 ;;;; Visual interface
 
@@ -379,12 +449,16 @@ mouse-3: Toggle minor modes")
   (telephone-line-defsegment* cl/telephone-line-evil-tag-segment ()
     "Displays the current evil state, abbreviated."
     (if (evil-visual-state-p)
-        (cl-case evil-visual-selection
+        (pcase evil-visual-selection
           ('block "Vb")
           ('line "Vl")
-          (t "Vi"))
+          (_ "Vi"))
       (ignore face)
-      (capitalize (seq-take (symbol-name evil-state) 2))))
+      (pcase evil-state
+        ;; When evil doesn't get initialized correctly, ‘evil-state’ is nil but
+        ;; telephone still tries to display it.
+        ((pred null) "()")
+        (_ (capitalize (seq-take (symbol-name evil-state) 2))))))
   (setq
    telephone-line-evil-use-short-tag t
    telephone-line-primary-left-separator 'telephone-line-tan-left
@@ -467,6 +541,32 @@ can help."
        (if (bound-and-true-p echo-bar-mode)
            (echo-bar-mode -1)))))
 
+(use-package olivetti ;; Centered, constrained-width editing
+  :no-require t
+  :custom
+  ;; The body width can be specified as a proportion of the window, but unless
+  ;; ‘visual-line-mode’ and/or ‘variable-pitch-mode’ are on, probably best to
+  ;; use number of columns. Needs to be bigger than ‘fill-column’ to account for
+  ;; line numbers.
+  (olivetti-body-width 90)
+  ;; Style is nil to use just margins, t to use fringes, or 'fancy for both.
+  (olivetti-style nil) ; 'fancy)
+  ;; TODO Need an ‘olivetti-mode’ toggle, once I have a place for it
+  :diminish "›o‹")
+
+(defvar cl/olivetti-width-map
+  (let ((map (make-sparse-keymap)))
+    (pcase-dolist
+        (`(,key ,sym)
+         '(("{" olivetti-shrink)
+           ("}" olivetti-expand)
+           ("[" olivetti-shrink)
+           ("]" olivetti-expand)))
+      (define-key map key sym)
+      (put sym 'repeat-map 'cl/olivetti-width-map))
+    map)
+  "Key map for repetition of olivetti shrink/expand commands.")
+
 ;;;;; TTY
 
 (use-package evil-terminal-cursor-changer ;; Cursor shape & color in terminal
@@ -547,8 +647,7 @@ can help."
   (setq rainbow-x-colors-major-mode-list nil))
 
 (use-package avy ;; Jump to arbitrary positions in visible text
-  :general
-  ("C-c a" #'avy-goto-line))
+  :defer t)
 
 (use-package flymake
   :defer t
@@ -578,6 +677,14 @@ can help."
     (delete-other-windows)))
 
 ;;;;; Documentation
+
+(use-package evil-commentary ;; Evil operators for (un-)commenting
+  :commands
+  evil-commentary-mode
+  :diminish
+  :init
+  (with-eval-after-load 'evil
+    (evil-commentary-mode)))
 
 (use-package hl-todo ;; Highlight “TO-DO” and similar keywords
   :hook

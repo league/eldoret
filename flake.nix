@@ -52,6 +52,7 @@
           p.ef-themes # Colorful and legible themes
           p.elm-mode # Major mode for Elm language
           p.evil-collection # Further keybindings and tools for Evil
+          p.evil-commentary # Evil operators for (un-)commenting
           p.evil-escape # Escape from anything with a customizable key sequence
           p.evil # I guess I joined the Dark Side™
           p.evil-terminal-cursor-changer # Cursor shape & color in terminal
