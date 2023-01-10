@@ -125,12 +125,23 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
   :defer t
   :commands server-running-p
   :init
-  (add-hook 'emacs-startup-hook
-            (defun cl/start-server ()
-              (unless (server-running-p)
-                (server-mode)))))
+  (add-hook 'emacs-startup-hook #'cl/start-server)
+  :config
+  ;; In a client frame, ‹C-x C-c› is ‘save-buffers-kill-terminal’ which leaves
+  ;; the server/daemon running.  So make ‹C-x x c› exit the server too.
+  (general-define-key
+   :keymaps 'ctl-x-x-map
+   "c" #'save-buffers-kill-emacs))
+
+(defun cl/start-server ()
+  "Start the server, unless already running."
+  (unless (server-running-p)
+    (server-mode)))
 
 ;;;; “Yep, here's your problem – someone set this thing to ‘evil’!”
+
+(eval-and-compile
+  (require 'evil-macros))
 
 (use-package evil ;; I guess I joined the Dark Side™
   :init
@@ -146,9 +157,8 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
         evil-want-keybinding nil)       ; Use evil-collection instead.
   :hook
   (emacs-startup . evil-mode)
-  :commands
-  evil-visual-state-p
   :config
+  (evil-set-undo-system evil-undo-system)
   (general-define-key
    ;; Keys bound in motion state are inherited in normal, visual, and
    ;; operator state keymaps if they are not shadowed.
@@ -165,11 +175,19 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
    ;; normal, it’s equivalent to ‹cl› (substitute one character and continue
    ;; inserting).  In visual mode, it’s equivalent to ‹c› (change region).
    "s" #'save-buffer
-   "M-s" #'save-some-buffers))
+   "M-s" #'save-some-buffers)
+
+  (evil-define-text-object cl/a-whole-buffer (count &optional beg end type)
+    "Select whole buffer, like \\[mark-whole-buffer]."
+    (evil-range (point-min) (point-max)))
+  (general-define-key
+   :keymaps 'evil-outer-text-objects-map
+   "h" 'cl/a-whole-buffer) ;; ‹a h› selects entire buffer
+  )
 
 (use-package undo-tree
-  :diminish "Un" ; TODO Probably completely diminish once I've settled on ‘undo-tree’
-  :hook          ; DONE Bind ‘undo-tree-visualize’, default on ‹C-x u›
+  :diminish ; DONE Probably completely diminish once I've settled on ‘undo-tree’
+  :hook     ; DONE Bind ‘undo-tree-visualize’, default on ‹C-x u›
   (evil-local-mode . turn-on-undo-tree-mode)
   :general
   (:states 'motion
@@ -323,6 +341,7 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
           ("interaction" "i" :prefix)
           ("interactive" "i" :prefix)
           ("python" "Py")
+          ("magit" "Mg" :prefix)
           :upcase)))
 
 (use-package telephone-line ;; A pretty and configurable mode-line
@@ -379,7 +398,12 @@ mouse-3: Toggle minor modes")
    telephone-line-rhs
    '((nil telephone-line-misc-info-segment)
      (accent telephone-line-vc-segment)
-     (evil cl/telephone-line-position-segment))))
+     (evil cl/telephone-line-position-segment))
+   ;; This portion of mode-line disrupted the accent color scheme.
+   mode-line-client
+   `(:propertize ("" (:eval (if (frame-parameter nil 'client) "@" "")))
+		 help-echo ,(purecopy "emacsclient frame")
+                 face telephone-line-accent-active)))
 
 (add-hook 'prog-mode-hook #'column-number-mode)
 
@@ -517,7 +541,7 @@ can help."
 
 (use-package rainbow-mode ;; Colorize color specs like #bff
   :hook emacs-lisp-mode nix-mode
-  :diminish "Rb"
+  :diminish
   :config
   ;; Usually, colorizing plain words like red and RoyalBlue is distracting.
   (setq rainbow-x-colors-major-mode-list nil))
@@ -525,6 +549,17 @@ can help."
 (use-package avy ;; Jump to arbitrary positions in visible text
   :general
   ("C-c a" #'avy-goto-line))
+
+(use-package flymake
+  :defer t
+  :commands
+  flymake-goto-prev-error flymake-goto-next-error
+  :config ;; TODO maybe bind ‘flymake-show-buffer-diagnostics’
+  (general-define-key
+   :keymaps 'flymake-mode-map
+   :states 'motion
+   "[c" #'flymake-goto-prev-error
+   "]c" #'flymake-goto-next-error))
 
 ;;;;; Revision control
 
@@ -547,10 +582,14 @@ can help."
 (use-package hl-todo ;; Highlight “TO-DO” and similar keywords
   :hook
   ((prog-mode ledger-mode latex-mode) . hl-todo-mode)
-  :general
-  (:states 'motion
-           "]t" #'hl-todo-next
-           "[t" #'hl-todo-previous))
+  :commands
+  hl-todo-next hl-todo-previous
+  :config
+  (general-define-key
+   :keymaps 'hl-todo-mode-map
+   :states 'motion
+   "]t" #'hl-todo-next
+   "[t" #'hl-todo-previous))
 
 ;;;; Afterword
 
@@ -560,6 +599,8 @@ can help."
 ;; Local Variables:
 ;; indent-tabs-mode: nil
 ;; byte-compile-error-on-warn: t
+;; eval: (setq elisp-flymake-byte-compile-load-path load-path)
+;; eval: (flymake-mode)
 ;; End:
 
 ;;; init.el ends here
