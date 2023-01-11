@@ -2,27 +2,17 @@
 
 ;;; Commentary:
 
-;; DONE Need an alternative to ‹ESC› to return to normal state.
-
-;; DONE I'd like magit to open full-window, rather than a new, half other-window
-
-;; DONE Implement hl-todo.
-
-;; DONE In TTY Emacs, support cursor changes
-
-;; DONE Possible to do default-text-scale just for current frame? → Doesn't seem
-;; so, but anyway I rarely use multiple frames.
-
-;; DONE evil-undo-system
-
 ;; DONE Also bind M-z, M-c, M-g to go to normal state, like evil-escape
-
+;; DONE evil-undo-system
+;; DONE I'd like magit to open full-window, rather than a new, half other-window
+;; DONE Implement hl-todo.
+;; DONE In TTY Emacs, support cursor changes
+;; DONE Need an alternative to ‹ESC› to return to normal state.
 ;; DONE Need evil in more places, including minibuffer.
-
-;; DONE Want a shortcut for saving, probably just ‹s›.
-
+;; DONE Possible to do default-text-scale just for current frame? → Doesn't seem
+;;      so, but anyway I rarely use multiple frames.
 ;; DONE repeat-mode and some relevant maps
-
+;; DONE Want a shortcut for saving, probably just ‹s›.
 ;; TODO ‘outline-minor-mode’ is missing keys I’m accustomed to, like ‹zB›
 
 ;;; Code:
@@ -30,6 +20,19 @@
 ;;;; Preliminaries
 
 ;;;;; Init speed-up
+
+;; Some highlights from (elisp)Startup Summary:
+;;    6. Load early-init.el
+;;    9. Run ‘before-init-hook’
+;;   10. Create graphical frame
+;;   13. Load site-start
+;;   14. Load init.el
+;;   15. Load default
+;;   17. Set ‘after-init-time’
+;;   18. Run ‘after-init-hook’
+;;   20. Run ‘tty-setup-hook’
+;;   26. Run ‘emacs-startup-hook’
+;;   28. Run ‘window-setup-hook’, with updated frame parameters
 
 ;; Doom Emacs init speed-up secrets, from
 ;; https://github.com/doomemacs/doomemacs/issues/310#issuecomment-354424413
@@ -41,38 +44,70 @@
       gc-cons-percentage 0.6
       file-name-handler-alist nil)
 
-(defun cl/startup-hook ()
-  "Restore GC settings after init, and report startup time."
-  (message "Init took %.3fs"
-           (float-time (time-subtract after-init-time before-init-time)))
+(defun cl/restore-gc-settings ()
+  "Return to sensible GC settings after initialization."
   (setq gc-cons-threshold (* 16 1048576)
         gc-cons-percentage 0.1
         file-name-handler-alist cl/file-name-handler-alist))
 
-(add-hook 'emacs-startup-hook #'cl/startup-hook)
+(add-hook 'window-setup-hook #'cl/restore-gc-settings 95)
+
+(defvar cl/after-after-init-time nil
+  "Value of ‘current-time’ at end of ‘after-init-hook’.")
+
+(defvar cl/after-startup-time nil
+  "Value of ‘current-time’ at end of ‘window-setup-hook’.")
+
+(defun cl/report-init-time ()
+  (let* ((t1 (float-time (time-subtract after-init-time before-init-time)))
+         (accum t1)
+         (mesg (format "init %.2fs" t1)))
+    (when cl/after-after-init-time
+      (let ((t2 (float-time
+                 (time-subtract cl/after-after-init-time after-init-time))))
+        (setq accum (+ accum t2))
+        (setq mesg (concat mesg (format " + after %.2fs" t2))))
+      (when cl/after-startup-time
+        (let ((t3 (float-time (time-subtract cl/after-startup-time
+                                             cl/after-after-init-time))))
+          (setq accum (+ accum t3))
+          (setq mesg (concat mesg (format " + startup %.2fs" t3)))))
+      (setq mesg (concat mesg (format " = %.2fs" accum))))
+    (message mesg)))
+
+(defun cl/after-after-init-time ()
+  (setq cl/after-after-init-time (current-time))
+  (cl/report-init-time))
+
+(defun cl/after-startup-time ()
+  (setq cl/after-startup-time (current-time))
+  (cl/report-init-time))
+
+(add-hook 'after-init-hook #'cl/report-init-time -99)
+(add-hook 'after-init-hook #'cl/after-after-init-time 99)
+(add-hook 'window-setup-hook #'cl/after-startup-time 99)
 
 ;;;;; Init profiling support
 
-(defmacro cl/profile-init (enable)
+(defmacro cl/profile-init ()
   "Optionally ENABLE profiling during init.
 Get the report from the built-in profiler using \\[profiler-report].  If the
 ‘benchmark-init’ package is available, we can also call
 \\[benchmark-init/show-durations-tree]."
-  (if enable
-      `(progn
-         (require 'profiler)
-         (profiler-start 'cpu)
-         (add-hook 'after-init-hook #'profiler-stop)
-         (define-key help-map (kbd "C-p") #'profiler-report)
-         ,(if (locate-library "benchmark-init")
-              `(progn
-                 (require 'benchmark-init)
-                 (benchmark-init/activate)
-                 (add-hook 'after-init-hook #'benchmark-init/deactivate)
-                 (define-key help-map (kbd "C-b")
-                   'benchmark-init/show-durations-tree))))))
+  `(progn
+     (require 'profiler)
+     (profiler-start 'cpu)
+     (add-hook 'window-setup-hook #'profiler-stop)
+     (define-key help-map (kbd "C-p") #'profiler-report)
+     ,(if (locate-library "benchmark-init")
+          `(progn
+             (require 'benchmark-init)
+             (benchmark-init/activate)
+             (add-hook 'window-setup-hook #'benchmark-init/deactivate)
+             (define-key help-map (kbd "C-b")
+               'benchmark-init/show-durations-tree)))))
 
-(cl/profile-init t)
+;; (cl/profile-init)
 
 ;;;;; Package configuration utilities
 
@@ -97,7 +132,7 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
         auto-compile-source-recreate-deletes-dest t
         auto-compile-toggle-deletes-nonlib-dest t)
   (auto-compile-on-load-mode)
-  :hook (emacs-lisp-mode . auto-compile-on-save-mode)
+  :ghook ('emacs-lisp-mode-hook #'auto-compile-on-save-mode)
   :commands auto-compile-on-load-mode)
 
 (use-package no-littering ;; Keep ‘user-emacs-directory’ clean
@@ -127,7 +162,7 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
   :defer t
   :commands server-running-p
   :init
-  (add-hook 'emacs-startup-hook #'cl/start-server)
+  (add-hook 'after-init-hook #'cl/start-server)
   :config
   ;; In a client frame, ‹C-x C-c› is ‘save-buffers-kill-terminal’ which leaves
   ;; the server/daemon running.  So make ‹C-x x c› exit the server too.
@@ -150,6 +185,9 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
   :init
   ;; DONE consider ‘evil-respect-visual-line-mode’
   ;; TODO I was never happy with ‘evil-complete-next-func’ ‹C-n›
+  (defconst cl/leader "'")
+  (defconst cl/file-leader (concat cl/leader "f"))
+  (defconst cl/toggle-leader (concat cl/leader "t"))
   (setq evil-echo-state nil
         evil-want-C-u-delete t
         evil-want-C-u-scroll t          ; DONE Need to bind ‘universal-argument’
@@ -157,10 +195,15 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
         evil-want-fine-undo t       ; I hope fine undo isn’t what wrecks repeat.
         evil-respect-visual-line-mode t
         evil-undo-system 'undo-tree)
-  :hook
-  (emacs-startup . evil-mode)
+  :ghook 'after-init-hook
+  :commands
+  evil-goto-mark-line
   :config
   (evil-set-undo-system evil-undo-system)
+  (when (symbolp (lookup-key evil-motion-state-map "'"))
+    (general-unbind :states 'motion "'")
+    (general-define-key
+      :states 'motion :prefix cl/leader "'" #'evil-goto-mark-line))
   (general-define-key
    ;; Keys bound in motion state are inherited in normal, visual, and
    ;; operator state keymaps if they are not shadowed.
@@ -168,8 +211,8 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
    ;; Like vim, we’re using ‹C-u› in normal state for scroll-up, and in insert
    ;; state for delete-to-beginning.  So let's bind capital ‹U› (otherwise
    ;; undefined) to ‘universal-argument’ in normal state. In insert state, I
-   ;; think we'd only want an argument for repeating characters, and for that you
-   ;; could do ‹M-1 M-0 *›, for example.
+   ;; think we'd only want an argument for repeating characters, and for that
+   ;; you could do ‹M-1 M-0 *›, for example.
    "U" #'universal-argument)
   (general-define-key
    :states '(motion normal)
@@ -187,10 +230,16 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
    "h" 'cl/a-whole-buffer) ;; ‹a h› selects entire buffer
   )
 
+(general-define-key
+ :states 'motion
+ :prefix cl/file-leader
+ "" '(nil :which-key "file prefix")
+ "f" #'find-file)
+
 (use-package undo-tree
   :diminish ; DONE Probably completely diminish once I've settled on ‘undo-tree’
-  :hook     ; DONE Bind ‘undo-tree-visualize’, default on ‹C-x u›
-  (evil-local-mode . turn-on-undo-tree-mode)
+  :ghook    ; DONE Bind ‘undo-tree-visualize’, default on ‹C-x u›
+  ('evil-local-mode-hook #'turn-on-undo-tree-mode)
   :config
   (defadvice undo-tree-make-history-save-file-name
       (after undo-tree activate)
@@ -217,8 +266,7 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
 ;;;;; Which-key
 
 (use-package which-key
-  :hook
-  (emacs-startup . which-key-mode)
+  :ghook 'after-init-hook
   :diminish
   :init
   (setq which-key-show-early-on-C-h t
@@ -267,10 +315,9 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
 
   ;; Remember, we can also use the ‘evil-escape’ to quit transients like help
   ;; mode, magit, etc.
-  :hook
-  (emacs-startup . evil-escape-mode)
+  :ghook 'evil-local-mode-hook
   :general
-  (:states '(motion insert)
+  (:states '(motion insert replace)
            "M-z" #'evil-escape
            "M-g" #'evil-escape
            "M-c" #'evil-escape))
@@ -306,38 +353,37 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
   ;; Can also set timeout separately for different commands using symbol
   ;; properties.
   (setq repeat-exit-timeout 3)
-  :hook
-  (emacs-startup . repeat-mode))
+  :ghook 'emacs-startup-hook)
 
-(defvar cl/evil-win-next-repeat-map
-    (let ((map (make-sparse-keymap)))
-      (pcase-dolist
-          (`(,key ,sym)
-           '(("w" evil-window-next)
-             ("W" evil-window-prev)))
-        (define-key map key sym)
-        (put sym 'repeat-map 'cl/evil-win-next-repeat-map))
-      map)
-    "Keymap for repetition of Evil next/previous window commands.")
+(defmacro cl/make-repeat-map (ksym doc binds)
+  "TODO with KSYM DOC BINDS."
+  `(defvar ,ksym
+     (let ((map (make-sparse-keymap)))
+       (pcase-dolist (`(,key ,sym) ,binds)
+         (define-key map key sym)
+         (put sym 'repeat-map (quote ,ksym)))
+       map)
+     ,doc))
 
-(defvar cl/evil-win-size-repeat-map
-  (let ((map (make-sparse-keymap)))
-    (pcase-dolist
-        (`(,key ,sym)
-         '(("-" evil-window-decrease-height)
-           ("+" evil-window-increase-height)
-           ("=" evil-window-increase-height)
-           ("_" evil-window-set-height)
-           ("<" evil-window-decrease-width)
-           ("," evil-window-decrease-width)
-           (">" evil-window-increase-width)
-           ("." evil-window-increase-width)
-           ("|" evil-window-set-width)
-           ("/" shrink-window-if-larger-than-buffer)))
-      (define-key map key sym)
-      (put sym 'repeat-map 'cl/evil-win-size-repeat-map))
-    map)
-  "Keymap for repetition of Evil window resizing commands.")
+(cl/make-repeat-map
+ cl/evil-win-next-repeat-map
+ "Keymap for repetition of Evil next/previous window commands."
+ '(("w" evil-window-next)
+   ("W" evil-window-prev)))
+
+(cl/make-repeat-map
+ cl/evil-win-size-repeat-map
+ "Keymap for repetition of Evil window resizing commands."
+ '(("-" evil-window-decrease-height)
+   ("+" evil-window-increase-height)
+   ("=" evil-window-increase-height)
+   ("_" evil-window-set-height)
+   ("<" evil-window-decrease-width)
+   ("," evil-window-decrease-width)
+   (">" evil-window-increase-width)
+   ("." evil-window-increase-width)
+   ("|" evil-window-set-width)
+   ("/" shrink-window-if-larger-than-buffer)))
 
 ;;;; Visual interface
 
@@ -361,29 +407,20 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
   :if (locate-library "fontaine")
   :commands fontaine-set-preset
   :defer t
-  :custom
-  (fontaine-presets
+  :init
+  (general-setq
+   fontaine-presets
    '((plex
       :default-family "IBM Plex Mono"
       :default-height 160
       :line-spacing 0
       :variable-pitch-family "IBM Plex Serif"
       :variable-pitch-height 1.0)))
-  :init
-  ;; Apply the initial preset when starting a graphical frame right away.
-  (add-hook 'emacs-startup-hook #'cl/fontaine-initial-preset)
-  ;; Apply the initial preset when creating a new frame (perhaps via daemon).
-  (add-hook 'after-make-frame-functions #'cl/fontaine-initial-preset))
-
-(defun cl/fontaine-initial-preset (&optional frame)
-  "Configure initial font set for FRAME."
-  (unless frame
-    (setq frame (selected-frame)))
-  (when (display-multi-font-p frame)
-    ;; We’re seeing "Face height does not produce a positive integer" during
-    ;; ‘fontaine--apply-bold-preset’, but otherwise it seems to work.
+  (general-after-gui
+    ;; Getting "Face height does not produce a positive integer"
+    ;; in ‘fontaine--apply-bold-preset’ but seems to work anyway.
     (with-demoted-errors "Fontaine error: %S"
-      (fontaine-set-preset 'plex frame))))
+      (fontaine-set-preset 'plex))))
 
 (use-package ef-themes ;; Colorful and legible themes
   :defer t
@@ -415,8 +452,7 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
           :upcase)))
 
 (use-package telephone-line ;; A pretty and configurable mode-line
-  :hook
-  (emacs-startup . telephone-line-mode)
+  :ghook 'after-init-hook
   :commands
   telephone-line-minor-mode-segment
   :config
@@ -484,16 +520,13 @@ mouse-3: Toggle minor modes")
 ;;;;; Margins
 
 (use-package display-line-numbers ;; Line numbers in left margin
-  :hook
-  (prog-mode . display-line-numbers-mode)
+  :ghook 'prog-mode-hook
   :init
-  (setq display-line-numbers-grow-only t))
+  (general-setq display-line-numbers-grow-only t))
 
 (use-package display-fill-column-indicator ;; Light line at right margin
-  :init
-  (add-hook 'prog-mode-hook #'cl/set-fill-column)
-  :hook
-  (prog-mode . display-fill-column-indicator-mode))
+  :ghook 'prog-mode-hook
+  :gfhook #'cl/set-fill-column)
 
 (defun cl/set-fill-column (&optional col)
   "Set ‘fill-column’ to COL (default 80) unless already set locally."
@@ -543,47 +576,42 @@ can help."
 
 (use-package olivetti ;; Centered, constrained-width editing
   :no-require t
-  :custom
-  ;; The body width can be specified as a proportion of the window, but unless
-  ;; ‘visual-line-mode’ and/or ‘variable-pitch-mode’ are on, probably best to
-  ;; use number of columns. Needs to be bigger than ‘fill-column’ to account for
-  ;; line numbers.
-  (olivetti-body-width 90)
-  ;; Style is nil to use just margins, t to use fringes, or 'fancy for both.
-  (olivetti-style nil) ; 'fancy)
-  ;; TODO Need an ‘olivetti-mode’ toggle, once I have a place for it
-  :diminish "›o‹")
+  :diminish "›o‹"
+  :config
+  (general-setq
+   ;; The body width can be specified as a proportion of the window, but unless
+   ;; ‘visual-line-mode’ and/or ‘variable-pitch-mode’ are on, probably best to
+   ;; use number of columns. Needs to be bigger than ‘fill-column’ to account
+   ;; for line numbers.
+   olivetti-body-width 90
+   ;; Style is nil to use just margins, t to use fringes, or 'fancy for both.
+   olivetti-style nil)
+  :general
+  (:prefix cl/toggle-leader :states 'motion
+           "o" #'olivetti-mode))
 
-(defvar cl/olivetti-width-map
-  (let ((map (make-sparse-keymap)))
-    (pcase-dolist
-        (`(,key ,sym)
-         '(("{" olivetti-shrink)
-           ("}" olivetti-expand)
-           ("[" olivetti-shrink)
-           ("]" olivetti-expand)))
-      (define-key map key sym)
-      (put sym 'repeat-map 'cl/olivetti-width-map))
-    map)
-  "Key map for repetition of olivetti shrink/expand commands.")
+(cl/make-repeat-map
+ cl/olivetti-width-map
+ "Key map for repetition of olivetti shrink/expand commands."
+ '(("{" olivetti-shrink)
+   ("}" olivetti-expand)
+   ("[" olivetti-shrink)
+   ("]" olivetti-expand)))
 
 ;;;;; TTY
 
 (use-package evil-terminal-cursor-changer ;; Cursor shape & color in terminal
   :defer t
-  :commands
-  evil-terminal-cursor-changer-activate)
+  :commands evil-terminal-cursor-changer-activate
+  :init
+  (general-after-tty
+    (evil-terminal-cursor-changer-activate)
+    ;; https://lists.gnu.org/archive/html/help-gnu-emacs/2008-06/msg00159.html
+    (unless standard-display-table
+      (setq standard-display-table (make-display-table)))
+    (set-display-table-slot standard-display-table 'vertical-border
+                            (make-glyph-code ?│))))
 
-(defun cl/tty-setup ()
-  "Configure stuff related to terminal use, such as cursor and border glyphs."
-  (evil-terminal-cursor-changer-activate)
-  ;; https://lists.gnu.org/archive/html/help-gnu-emacs/2008-06/msg00159.html
-  (unless standard-display-table
-    (setq standard-display-table (make-display-table)))
-  (set-display-table-slot standard-display-table 'vertical-border
-                          (make-glyph-code ?│)))
-
-(add-hook 'after-init-hook #'cl/tty-setup)
 
 ;;;; File system
 
@@ -593,8 +621,7 @@ can help."
   :defer t
   :init
   (setq recentf-max-saved-items 1024)
-  :hook
-  (emacs-startup . recentf-mode)
+  :ghook 'emacs-startup-hook
   :commands
   recentf-save-list
   :config
@@ -640,11 +667,11 @@ can help."
 ;;;; Programming modes
 
 (use-package rainbow-mode ;; Colorize color specs like #bff
-  :hook emacs-lisp-mode nix-mode
+  :ghook 'emacs-lisp-mode-hook 'nix-mode-hook
   :diminish
-  :config
+  :init
   ;; Usually, colorizing plain words like red and RoyalBlue is distracting.
-  (setq rainbow-x-colors-major-mode-list nil))
+  (general-setq rainbow-x-colors-major-mode-list nil))
 
 (use-package avy ;; Jump to arbitrary positions in visible text
   :defer t)
@@ -659,6 +686,12 @@ can help."
    :states 'motion
    "[c" #'flymake-goto-prev-error
    "]c" #'flymake-goto-next-error))
+
+;;;;; Delimiters
+
+(use-package evil-surround ;; Add/remove/change paired delimiters around point
+  :after evil
+  :ghook 'evil-local-mode-hook)
 
 ;;;;; Revision control
 
@@ -679,16 +712,14 @@ can help."
 ;;;;; Documentation
 
 (use-package evil-commentary ;; Evil operators for (un-)commenting
-  :commands
-  evil-commentary-mode
   :diminish
-  :init
-  (with-eval-after-load 'evil
-    (evil-commentary-mode)))
+  :ghook 'prog-mode-hook)
 
 (use-package hl-todo ;; Highlight “TO-DO” and similar keywords
-  :hook
-  ((prog-mode ledger-mode latex-mode) . hl-todo-mode)
+  :ghook
+  'prog-mode-hook
+  'ledger-mode-hook
+  'latex-mode-hook
   :commands
   hl-todo-next hl-todo-previous
   :config
@@ -704,8 +735,10 @@ can help."
   :no-require t
   :if (locate-library "notmuch")
   :defer t
+  :config
+  (general-setq
+   notmuch-hello-thousands-separator ",")
   :custom
-  (notmuch-hello-thousands-separator ",")
   (notmuch-show-all-tags-list t)
   (notmuch-always-prompt-for-sender t)
   (notmuch-fcc-dirs
