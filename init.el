@@ -119,6 +119,7 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
 (eval-and-compile
   (require 'use-package) ;; Configuration macros
   (require 'general) ;; Convenient macros for keybindings
+  (require 'diminish)
   (setq use-package-verbose t
         use-package-compute-statistics t))
 
@@ -147,13 +148,13 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
   :config
   (setq custom-file (expand-file-name "custom.el" no-littering-etc-directory)))
 
-(use-package diminish
+(use-package eldoc
   :defer t
-  :commands diminish
-  :config
-  (diminish 'eldoc-mode "edoc")
-  (with-eval-after-load 'autorevert
-    (diminish 'auto-revert-mode)))
+  :diminish "edoc")
+
+(use-package autorevert
+  :defer t
+  :diminish)
 
 ;;;;; Startup dashboard/scratch screen
 
@@ -203,8 +204,6 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
         evil-respect-visual-line-mode t
         evil-undo-system 'undo-tree)
   :ghook 'after-init-hook
-  :commands
-  evil-goto-mark-line
   :config
   (evil-set-undo-system evil-undo-system)
   ;; Initial setup for leader key: it clobbers ‘evil-goto-mark-line’ ‹'›, but
@@ -213,13 +212,14 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
   (when (symbolp (lookup-key evil-motion-state-map "'"))
     (general-unbind :states 'motion "'")
     (general-define-key
-      :states 'motion :prefix cl/leader "'" #'evil-goto-mark-line))
+      :states 'motion :prefix cl/leader "'" 'evil-goto-mark-line))
 
   (general-define-key
    :states 'motion
    :prefix cl/leader
    "b" '(nil :wk "Buffers")
    "bb" #'switch-to-buffer
+   "bl" #'buffer-menu-other-window
    "bx" #'kill-buffer
    "f" '(nil :wk "Files")
    "ff" #'find-file
@@ -356,12 +356,12 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
 ;;;;; Evil all the things!
 
 (use-package evil-collection ;; Further keybindings and tools for Evil
+  :after evil
   :commands evil-collection-init
   :init
   (setq evil-collection-setup-minibuffer t
         evil-collection-always-run-setup-hook-after-load t)
-  (with-eval-after-load 'evil
-    (evil-collection-init))
+  (evil-collection-init)
   :config
   (diminish 'evil-collection-unimpaired-mode)
   ;; The commands that begin with ‘evil-collection-unimpaired’ should have
@@ -718,14 +718,12 @@ can help."
 
 (use-package flymake
   :defer t
-  :commands
-  flymake-goto-prev-error flymake-goto-next-error
   :config ;; TODO maybe bind ‘flymake-show-buffer-diagnostics’
   (general-define-key
    :keymaps 'flymake-mode-map
    :states 'motion
-   "[c" #'flymake-goto-prev-error
-   "]c" #'flymake-goto-next-error))
+   "[c" 'flymake-goto-prev-error
+   "]c" 'flymake-goto-next-error))
 
 (use-package evil-numbers ;; Increment/decrement numbers near point
   :general
@@ -763,14 +761,12 @@ can help."
   :ghook
   ('magit-post-refresh-hook #'diff-hl-magit-post-refresh)
   ('emacs-startup-hook #'global-diff-hl-mode)
-  :commands
-  diff-hl-next-hunk diff-hl-previous-hunk
   :config
   (general-define-key
    :keymaps 'diff-hl-mode-map
    :states 'motion
-   "]d" #'diff-hl-next-hunk
-   "[d" #'diff-hl-previous-hunk))
+   "]d" 'diff-hl-next-hunk
+   "[d" 'diff-hl-previous-hunk))
 
 ;;;;; Documentation
 
@@ -783,14 +779,12 @@ can help."
   'prog-mode-hook
   'ledger-mode-hook
   'latex-mode-hook
-  :commands
-  hl-todo-next hl-todo-previous
   :config
   (general-define-key
    :keymaps 'hl-todo-mode-map
    :states 'motion
-   "]t" #'hl-todo-next
-   "[t" #'hl-todo-previous))
+   "]t" 'hl-todo-next
+   "[t" 'hl-todo-previous))
 
 ;;;; Email
 
@@ -798,21 +792,23 @@ can help."
   :no-require t
   :if (locate-library "notmuch")
   :defer t
-  :config
+  :commands
+  notmuch-search
+  :init
+  (defvar notmuch-saved-searches)
   (general-setq
-   notmuch-hello-thousands-separator ",")
-  :custom
-  (notmuch-show-all-tags-list t)
-  (notmuch-always-prompt-for-sender t)
-  (notmuch-fcc-dirs
+   notmuch-hello-thousands-separator ","
+   notmuch-show-all-tags-list t
+   notmuch-always-prompt-for-sender t
+   notmuch-fcc-dirs
    '(("league@contrapunctus.net" . "cng/Sent +sent -unread -inbox")
      ("christopher.league@liu.edu" . "\"liu/Sent Items\" +sent -unread -inbox")
-     ("heychris@commandline.tv" . "cltv/Sent +sent -unread")))
-  (notmuch-search-line-faces
+     ("heychris@commandline.tv" . "cltv/Sent +sent -unread"))
+   notmuch-search-line-faces
    '(("unread" . notmuch-search-unread-face)
      ("flagged" . notmuch-search-flagged-face)
-     ("deleted" . (:strike-through t))))
-  (notmuch-tagging-keys
+     ("deleted" . (:strike-through t)))
+   notmuch-tagging-keys
    '(("a" notmuch-archive-tags "Archive")
      ("c" ("+chime" "-inbox" "-unread") "CHIME FRB")
      ("d" ("+deleted" "-inbox" "-unread") "Delete")
@@ -821,9 +817,9 @@ can help."
      ("s" ("+spam" "-inbox") "Mark as spam")
      ("t" ("+tca" "-inbox" "-unread") "TCA message")
      ("u" notmuch-show-mark-read-tags "Mark read")
-     ("w" ("+waiting" "-inbox" "-unread") "Waiting")))
-  (notmuch-search-sort-order 'newest-first)
-  (notmuch-saved-searches
+     ("w" ("+waiting" "-inbox" "-unread") "Waiting"))
+   notmuch-search-sort-order 'newest-first
+   notmuch-saved-searches
    '((:name "inbox" :query "tag:inbox and (not tag:bulk)" :key "i")
      (:name "bulk" :query "tag:inbox and tag:bulk" :key "b")
      (:name "flagged" :query "tag:flagged" :key "f")
@@ -836,8 +832,33 @@ can help."
      (:name "waiting" :query "tag:waiting" :key "w")
      (:name "emacs-bug unread" :query "tag:emacs-bug is:unread" :key "e")
      (:name "orgmode unread" :query "tag:orgmode is:unread" :key "o")))
+  ;; Add saved searches directly to keymap, as an alternative to binding
+  ;; ‘notmuch-jump-search’. So I'm using ‹'mi› for Inbox rather than ‹'mji›.
+  (dolist (item notmuch-saved-searches)
+    (when (plist-get item :key)
+      (general-define-key
+       :states 'motion :prefix cl/leader
+       (concat "m" (plist-get item :key))
+       (cons (concat "notmuch⠶" (plist-get item :name))
+             #'cl/notmuch-saved-search))))
+  (general-define-key
+   :states 'motion :prefix cl/leader
+   "mm" 'notmuch
+   "mc" 'notmuch-mua-new-mail
+   "mg" 'notmuch-poll
+   "ms" 'notmuch-search)
   :general
   ([remap compose-mail] #'notmuch-mua-new-mail))
+
+(defun cl/notmuch-saved-search (key)
+  "Invoke a saved search according to the last KEY pressed."
+  (interactive (list last-command-event))
+  (let (match (keystr (char-to-string key)))
+    (dolist (item notmuch-saved-searches)
+      (when (equal keystr (plist-get item :key))
+        (setq match item)))
+    (when match
+      (notmuch-search (plist-get match :query)))))
 
 (use-package ol-notmuch
   :no-require t
