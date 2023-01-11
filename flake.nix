@@ -55,16 +55,18 @@
           p.auto-compile # Automatically (re-)compile elisp code
           p.avy # Jump to arbitrary positions in visible text
           p.cyphejor # Abbreviate major-mode names
+          p.diff-hl # Highlight uncommitted changes using VC
           p.diminish # Remove or abbreviate minor-mode indicators
           p.dockerfile-mode # Major mode for editing Dockerfiles
           p.echo-bar # Turn echo area into a custom status bar
           p.ef-themes # Colorful and legible themes
           p.elm-mode # Major mode for Elm language
           p.evil-collection # Further keybindings and tools for Evil
-          p.evil-surround # Add/remove/change paired delimiters around point
           p.evil-commentary # Evil operators for (un-)commenting
           p.evil-escape # Escape from anything with a customizable key sequence
           p.evil # I guess I joined the Dark Side™
+          p.evil-numbers # Increment/decrement numbers near point
+          p.evil-surround # Add/remove/change paired delimiters around point
           p.evil-terminal-cursor-changer # Cursor shape & color in terminal
           p.general # Convenient macros for keybindings
           p.hl-todo # Highlight “TO-DO” and similar keywords

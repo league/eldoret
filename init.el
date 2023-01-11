@@ -13,8 +13,8 @@
 ;;      so, but anyway I rarely use multiple frames.
 ;; DONE repeat-mode and some relevant maps
 ;; DONE Want a shortcut for saving, probably just ‹s›.
-;; TODO Binding for find-library
-;; TODO Add evil-numbers
+;; DONE Add evil-numbers
+;; DONE Binding for find-library
 ;; TODO ‘outline-minor-mode’ is missing keys I’m accustomed to, like ‹zB›
 
 ;;; Code:
@@ -189,13 +189,12 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
   (setq evil-want-keybinding nil)
   (require 'evil-macros))
 
+(defconst cl/leader "'")
+
 (use-package evil ;; I guess I joined the Dark Side™
   :init
   ;; DONE consider ‘evil-respect-visual-line-mode’
   ;; TODO I was never happy with ‘evil-complete-next-func’ ‹C-n›
-  (defconst cl/leader "'")
-  (defconst cl/file-leader (concat cl/leader "f"))
-  (defconst cl/toggle-leader (concat cl/leader "t"))
   (setq evil-echo-state nil
         evil-want-C-u-delete t
         evil-want-C-u-scroll t          ; DONE Need to bind ‘universal-argument’
@@ -208,10 +207,33 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
   evil-goto-mark-line
   :config
   (evil-set-undo-system evil-undo-system)
+  ;; Initial setup for leader key: it clobbers ‘evil-goto-mark-line’ ‹'›, but
+  ;; it's not a big loss because ‹'X› is the same as ‹`X0› and anyway let's
+  ;; double it up in the leader map so we can use ‹''X› too.
   (when (symbolp (lookup-key evil-motion-state-map "'"))
     (general-unbind :states 'motion "'")
     (general-define-key
       :states 'motion :prefix cl/leader "'" #'evil-goto-mark-line))
+
+  (general-define-key
+   :states 'motion
+   :prefix cl/leader
+   "b" '(nil :wk "Buffers")
+   "bb" #'switch-to-buffer
+   "bx" #'kill-buffer
+   "f" '(nil :wk "Files")
+   "ff" #'find-file
+   "fl" #'find-library
+   "ft" #'load-theme
+   "t" '(nil :wk "Toggles"))
+
+  (general-define-key
+   :keymaps 'evil-window-map
+   :prefix cl/leader
+   "b" #'switch-to-buffer-other-window
+   "f" #'find-file-other-window
+   "l" #'find-library-other-window)
+
   (general-define-key
    ;; Keys bound in motion state are inherited in normal, visual, and
    ;; operator state keymaps if they are not shadowed.
@@ -221,9 +243,11 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
    ;; undefined) to ‘universal-argument’ in normal state. In insert state, I
    ;; think we'd only want an argument for repeating characters, and for that
    ;; you could do ‹M-1 M-0 *›, for example.
-   "U" #'universal-argument)
+   "U" #'universal-argument
+   "g '" #'switch-to-buffer)
+
   (general-define-key
-   :states '(motion normal)
+   :states '(motion normal) ;; Needs normal too, or ‘evil-substitute’ dominates.
    ;; Saving: The ‹s› key in normal/visual states is pretty redundant.  In
    ;; normal, it’s equivalent to ‹cl› (substitute one character and continue
    ;; inserting).  In visual mode, it’s equivalent to ‹c› (change region).
@@ -238,13 +262,8 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
    "h" 'cl/a-whole-buffer) ;; ‹a h› selects entire buffer
   )
 
-(general-define-key
- :states 'motion
- :prefix cl/file-leader
- "" '(nil :which-key "file prefix")
- "f" #'find-file)
-
 (use-package undo-tree
+  :defer t
   :diminish ; DONE Probably completely diminish once I've settled on ‘undo-tree’
   :ghook    ; DONE Bind ‘undo-tree-visualize’, default on ‹C-x u›
   ('evil-local-mode-hook #'turn-on-undo-tree-mode)
@@ -252,9 +271,13 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
   (defadvice undo-tree-make-history-save-file-name
       (after undo-tree activate)
     (setq ad-return-value (concat ad-return-value ".gz")))
-  :general
-  (:states 'motion
-           "g/" #'undo-tree-visualize))
+  ;; This package binds ‹C-_› to ‘undo-tree-undo’, but I want to clear it for
+  ;; use as ‘default-text-scale-decrease’.
+  (general-unbind :keymaps 'undo-tree-map "C-_")
+  (general-define-key
+   :keymaps 'undo-tree-map
+   :states 'motion
+   "g/" 'undo-tree-visualize))
 
 ;;;; Key bindings
 
@@ -407,7 +430,7 @@ command SYM will be linked to the map for use with ‘repeat-mode’."
   ;; Nice to make bindings the same as kitty (requires ctrl-shift) and
   ;; firefox (works with or without shift) — they don't need to be
   ;; usable from TTY.
-  ;; TODO ‹C-_› conflicts with ‘undo-tree-undo’
+  ;; DONE ‹C-_› conflicts with ‘undo-tree-undo’
   :general
   ("C-+" #'default-text-scale-increase
    "C-_" #'default-text-scale-decrease
@@ -431,7 +454,10 @@ command SYM will be linked to the map for use with ‘repeat-mode’."
     ;; Getting "Face height does not produce a positive integer"
     ;; in ‘fontaine--apply-bold-preset’ but seems to work anyway.
     (with-demoted-errors "Fontaine error: %S"
-      (fontaine-set-preset 'plex))))
+      (fontaine-set-preset 'plex)))
+  :general
+  (:states 'motion :prefix cl/leader
+           "fo" #'fontaine-set-preset))
 
 (use-package ef-themes ;; Colorful and legible themes
   :defer t
@@ -440,7 +466,7 @@ command SYM will be linked to the map for use with ‘repeat-mode’."
 
 (defun cl/load-initial-theme ()
   "Load initial theme."
-  (load-theme 'ef-cyprus 'no-confirm))
+  (load-theme 'ef-frost 'no-confirm))
 
 (add-hook 'emacs-startup-hook #'cl/load-initial-theme)
 
@@ -533,7 +559,10 @@ mouse-3: Toggle minor modes")
 (use-package display-line-numbers ;; Line numbers in left margin
   :ghook 'prog-mode-hook
   :init
-  (general-setq display-line-numbers-grow-only t))
+  (general-setq display-line-numbers-grow-only t)
+  :general
+  (:states 'motion :prefix cl/leader
+           "tl" #'display-line-numbers-mode))
 
 (use-package display-fill-column-indicator ;; Light line at right margin
   :ghook 'prog-mode-hook
@@ -598,8 +627,8 @@ can help."
    ;; Style is nil to use just margins, t to use fringes, or 'fancy for both.
    olivetti-style nil)
   :general
-  (:prefix cl/toggle-leader :states 'motion
-           "o" #'olivetti-mode))
+  (:prefix cl/leader :states 'motion
+           "to" #'olivetti-mode))
 
 (cl/make-repeat-map
  cl/olivetti-width-map
@@ -698,6 +727,14 @@ can help."
    "[c" #'flymake-goto-prev-error
    "]c" #'flymake-goto-next-error))
 
+(use-package evil-numbers ;; Increment/decrement numbers near point
+  :general
+  (:states 'motion
+           "C-a" #'evil-numbers/inc-at-pt
+           "C-q" #'evil-numbers/dec-at-pt
+           "g C-a" #'evil-numbers/inc-at-pt-incremental
+           "g C-q" #'evil-numbers/dec-at-pt-incremental))
+
 ;;;;; Delimiters
 
 (use-package evil-surround ;; Add/remove/change paired delimiters around point
@@ -719,6 +756,21 @@ can help."
   ;; https://emacs.stackexchange.com/questions/17724/
   (when (provided-mode-derived-p major-mode 'magit-status-mode)
     (delete-other-windows)))
+
+(use-package diff-hl ;; Highlight uncommitted changes using VC
+  :init
+  (general-setq diff-hl-draw-borders nil)
+  :ghook
+  ('magit-post-refresh-hook #'diff-hl-magit-post-refresh)
+  ('emacs-startup-hook #'global-diff-hl-mode)
+  :commands
+  diff-hl-next-hunk diff-hl-previous-hunk
+  :config
+  (general-define-key
+   :keymaps 'diff-hl-mode-map
+   :states 'motion
+   "]d" #'diff-hl-next-hunk
+   "[d" #'diff-hl-previous-hunk))
 
 ;;;;; Documentation
 
