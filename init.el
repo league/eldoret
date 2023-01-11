@@ -13,6 +13,8 @@
 ;;      so, but anyway I rarely use multiple frames.
 ;; DONE repeat-mode and some relevant maps
 ;; DONE Want a shortcut for saving, probably just ‹s›.
+;; TODO Binding for find-library
+;; TODO Add evil-numbers
 ;; TODO ‘outline-minor-mode’ is missing keys I’m accustomed to, like ‹zB›
 
 ;;; Code:
@@ -37,7 +39,7 @@
 ;; Doom Emacs init speed-up secrets, from
 ;; https://github.com/doomemacs/doomemacs/issues/310#issuecomment-354424413
 
-(defvar cl/file-name-handler-alist file-name-handler-alist
+(defconst cl/file-name-handler-alist file-name-handler-alist
   "Temporarily store ‘file-name-handler-alist’ during init.")
 
 (setq gc-cons-threshold (* 384 1048576)
@@ -59,6 +61,7 @@
   "Value of ‘current-time’ at end of ‘window-setup-hook’.")
 
 (defun cl/report-init-time ()
+  "Report up to three elapsed time intervals during startup process."
   (let* ((t1 (float-time (time-subtract after-init-time before-init-time)))
          (accum t1)
          (mesg (format "init %.2fs" t1)))
@@ -76,10 +79,12 @@
     (message mesg)))
 
 (defun cl/after-after-init-time ()
+  "Report time at end of ‘after-init-hook’."
   (setq cl/after-after-init-time (current-time))
   (cl/report-init-time))
 
 (defun cl/after-startup-time ()
+  "Report time at end of ‘window-setup-hook’ – also after ‘emacs-startup-hook’."
   (setq cl/after-startup-time (current-time))
   (cl/report-init-time))
 
@@ -125,15 +130,18 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
   :general
   ("C-h C-u" #'use-package-report))
 
-;; Automatically (re-)compile elisp code.
-(use-package auto-compile
+
+(use-package auto-compile ;; Automatically (re-)compile elisp code.
   :init
   (setq auto-compile-mode-line-counter t
         auto-compile-source-recreate-deletes-dest t
         auto-compile-toggle-deletes-nonlib-dest t)
-  (auto-compile-on-load-mode)
-  :ghook ('emacs-lisp-mode-hook #'auto-compile-on-save-mode)
-  :commands auto-compile-on-load-mode)
+  ;; Not sure I need ‘auto-compile-on-load-mode’. All the packages I pull from
+  ;; will be reliably pre-compiled (and read-only anyway).  The exception is
+  ;; just this init file, and it should be reliably compiled on save.  Even if
+  ;; it’s occasionally skipped, ‘load-prefer-newer’ will DTRT.
+  :ghook
+  ('emacs-lisp-mode-hook #'auto-compile-on-save-mode))
 
 (use-package no-littering ;; Keep ‘user-emacs-directory’ clean
   :config
@@ -266,7 +274,7 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
 ;;;;; Which-key
 
 (use-package which-key
-  :ghook 'after-init-hook
+  :ghook 'emacs-startup-hook
   :diminish
   :init
   (setq which-key-show-early-on-C-h t
@@ -356,8 +364,10 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
   :ghook 'emacs-startup-hook)
 
 (defmacro cl/make-repeat-map (ksym doc binds)
-  "TODO with KSYM DOC BINDS."
-  `(defvar ,ksym
+  "Create a ‘repeat-map’ KSYM with given DOC string and BINDS.
+BINDS is a list of elements like (KEY SYM) to place in the map.  But also each
+command SYM will be linked to the map for use with ‘repeat-mode’."
+  `(defconst ,ksym
      (let ((map (make-sparse-keymap)))
        (pcase-dolist (`(,key ,sym) ,binds)
          (define-key map key sym)
@@ -397,6 +407,7 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
   ;; Nice to make bindings the same as kitty (requires ctrl-shift) and
   ;; firefox (works with or without shift) — they don't need to be
   ;; usable from TTY.
+  ;; TODO ‹C-_› conflicts with ‘undo-tree-undo’
   :general
   ("C-+" #'default-text-scale-increase
    "C-_" #'default-text-scale-decrease
@@ -555,7 +566,7 @@ mouse-3: Toggle minor modes")
                   ("fully-charged" "")
                   (_ bt))))))
           (:eval
-           (format-time-string " %H:%M %a %1e %b")))) ; 23:19 Tue 5 Jul
+           (format-time-string " %1H:%M %a %1e %b")))) ; 23:19 Tue 5 Jul
   (add-hook 'window-configuration-change-hook #'cl/echo-bar-when-fullscreen)
   :config
   (require 'battery))
