@@ -14,8 +14,12 @@
 ;; DONE repeat-mode and some relevant maps
 ;; DONE Want a shortcut for saving, probably just ‹s›.
 ;; DONE Add evil-numbers
-;; DONE Binding for find-library
+;; DONE Binding for ‘find-library’
+;; DONE evil-surround with quotes etc.
 ;; TODO ‘outline-minor-mode’ is missing keys I’m accustomed to, like ‹zB›
+;; TODO Add toggles for themes
+;; TODO Is leader available in magit? → No.
+;; TODO Ensure sendmail works with message-mode
 
 ;;; Code:
 
@@ -154,7 +158,8 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
 
 (use-package autorevert
   :defer t
-  :diminish)
+  :config
+  (diminish 'auto-revert-mode))
 
 ;;;;; Startup dashboard/scratch screen
 
@@ -225,6 +230,7 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
    "ff" #'find-file
    "fl" #'find-library
    "ft" #'load-theme
+   "m" '(nil :wk "Mail")
    "t" '(nil :wk "Toggles"))
 
   (general-define-key
@@ -713,6 +719,10 @@ can help."
   ;; Usually, colorizing plain words like red and RoyalBlue is distracting.
   (general-setq rainbow-x-colors-major-mode-list nil))
 
+(use-package envrc ;; Load environment based on .envrc in working dir
+  :if (executable-find "direnv")
+  :ghook ('emacs-startup-hook #'envrc-global-mode))
+
 (use-package avy ;; Jump to arbitrary positions in visible text
   :defer t)
 
@@ -735,9 +745,56 @@ can help."
 
 ;;;;; Delimiters
 
+(defmacro cl/pair (key open close name)
+  "Define a matching pair OPEN/CLOSE with trigger KEY and slug NAME."
+  `(progn
+     (setq-default evil-surround-pairs-alist
+                   (append
+                    '((,key ,open . ,close)
+                      (,(aref close 0) ,open . ,close)
+                      (,(aref open 0) ,(concat open " ") . ,(concat " " close)))
+                    (default-value 'evil-surround-pairs-alist)))
+     ,(let ((a-name (intern (concat "cl/evil-a-" name)))
+            (i-name (intern (concat "cl/evil-i-" name)))
+            (skey (char-to-string key)))
+        `(progn
+           (evil-define-text-object ,a-name (count &optional beg end type)
+             :extend-selection nil
+             (evil-select-paren ,open ,close beg end type count t))
+           (general-define-key :keymaps 'evil-outer-text-objects-map
+                               ,skey ',a-name)
+           (evil-define-text-object ,i-name (count &optional beg end type)
+             :extend-selection nil
+             (evil-select-paren ,open ,close beg end type count))
+           (general-define-key :keymaps 'evil-inner-text-objects-map
+                               ,skey ',i-name)))))
+
 (use-package evil-surround ;; Add/remove/change paired delimiters around point
   :after evil
-  :ghook 'evil-local-mode-hook)
+  :ghook 'evil-local-mode-hook
+  ;; Here is a summary of default ‘evil-surround-pairs-alist’:
+  ;;   (       Parens ( with spaces )
+  ;;   ) or b  Parens (without spaces)
+  ;;   [       Brackets [ with spaces ]
+  ;;   ]       Brackets [without spaces]
+  ;;   {       Braces { with spaces }
+  ;;   } or B  Braces {without spaces}
+  ;;   < or t  HTML-like tag, <b>like this</b>
+  ;;   >       Angles <without spaces>
+  ;;   f       C-style function w/parens, func(like this)
+  ;;   C-f     Lisp-style function w/parens, (func like this)
+  :config
+  (cl/pair ?c "‹" "›" "chevron")        ; U+2039/203A TeX \flq    Compose .<
+  (cl/pair ?g "᚛" "᚜" "feather")        ; U+169B/169C
+  (cl/pair ?d "“" "”" "dquote")         ; U+201C/201D TeX \ldq    Compose "<
+  (cl/pair ?q "‘" "’" "quote")          ; U+2018/2019 TeX \lq     Compose '<
+  (cl/pair ?u "᚛" "᚜" "guillemet")      ; U+00AB/00BB TeX \flqq   Compose <<
+  (cl/pair ?r "｢" "｣" "corner")         ; U+FF62/FF63             Compose !<
+  (cl/pair ?m "⟨" "⟩" "math-angle")     ; U+27E8/27E9 TeX \langle Compose ,<
+  (setq-default evil-surround-pairs-alist
+                (cl-remove-duplicates
+                 (default-value 'evil-surround-pairs-alist)
+                 :key #'car :from-end t)))
 
 ;;;;; Revision control
 
