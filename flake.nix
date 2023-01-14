@@ -23,15 +23,7 @@
         (system:
           mk (import nixpkgs {
             inherit system;
-            overlays = [
-              # Ordering of overlays is important! We need notmuch-sort-fork
-              # to come AFTER emacs-overlay.
-              emacs-overlay.overlays.package
-              emacs-overlay.overlays.emacs
-              notmuch-sort-fork.overlays.default
-              self.overlays.default
-              self.overlays.packageBuild
-            ];
+            overlays = [ self.overlays.default ];
           }));
 
       # It’s helpful for emacs packages to set the ‘mainProgram’ attribute.
@@ -43,14 +35,32 @@
       # define an iterator to construct attribute sets.  The ‘defaultEmacs’ must
       # be one of the ‘emacsAttrs’ names.  It is used in the devShell, and for
       # the ‘default’ package and app.
-      emacsAttrs = lib.attrNames (self.overlays.default { } { });
+      emacsAttrs = lib.attrNames (self.overlays.emacsen { } { });
       eachEmacs = mk: lib.listToAttrs (builtins.map mk emacsAttrs);
-      defaultEmacs = "emacs";
+      defaultEmacs = "lemacs";
 
     in {
+      overlays.lib = _final: _prev: { inherit lib; };
+
+      # This overlay tweaks the packageBuild tool so that all packages built
+      # with nix will include README files alongside the code.  Otherwise, we
+      # have only Info files and Commentary sections in Elisp files.
+      overlays.packageBuild = _final: prev: {
+        emacsPackagesFor = emacs:
+          (prev.emacsPackagesFor emacs).overrideScope' (_: esuper: {
+            melpaBuild = args:
+              (esuper.melpaBuild args).overrideAttrs (before: {
+                packageBuild = before.packageBuild.overrideAttrs (old: {
+                  patches = [ ./package-build-with-readme.patch ]
+                    ++ old.patches;
+                });
+              });
+          });
+      };
+
       # Emacs variants are defined using overlays.  They can vary in build
       # arguments, package selections, etc.
-      overlays.default = let
+      overlays.emacsen = let
         ttyPkgs = p: [
           p.auto-compile # Automatically (re-)compile elisp code
           p.avy # Jump to arbitrary positions in visible text
@@ -98,26 +108,21 @@
             p.ol-notmuch # Org links to notmuch messages and threads
           ];
       in _final: prev: {
-        emacs-nox = setMainProgram (prev.emacs-nox.pkgs.withPackages ttyPkgs);
-        emacs = setMainProgram (prev.emacs.pkgs.withPackages guiPkgs);
-        emacs-mail = setMainProgram (prev.emacs.pkgs.withPackages mailPkgs);
+        lemacs-nox = setMainProgram (prev.emacs-nox.pkgs.withPackages ttyPkgs);
+        lemacs = setMainProgram (prev.emacs.pkgs.withPackages guiPkgs);
+        lemacs-mail = setMainProgram (prev.emacs.pkgs.withPackages mailPkgs);
       };
 
-      # This overlay tweaks the packageBuild tool so that all packages built
-      # with nix will include README files alongside the code.  Otherwise, we
-      # have only Info files and Commentary sections in Elisp files.
-      overlays.packageBuild = _final: prev: {
-        emacsPackagesFor = emacs:
-          (prev.emacsPackagesFor emacs).overrideScope' (_: esuper: {
-            melpaBuild = args:
-              (esuper.melpaBuild args).overrideAttrs (before: {
-                packageBuild = before.packageBuild.overrideAttrs (old: {
-                  patches = [ ./package-build-with-readme.patch ]
-                    ++ old.patches;
-                });
-              });
-          });
-      };
+      overlays.default = lib.composeManyExtensions [
+        # Ordering of overlays is important! We need notmuch-sort-fork
+        # to come AFTER emacs-overlay.
+        self.overlays.lib
+        emacs-overlay.overlays.package
+        emacs-overlay.overlays.emacs
+        notmuch-sort-fork.overlays.default
+        self.overlays.emacsen
+        self.overlays.packageBuild
+      ];
 
       packages = eachSystem (pkgs:
         eachEmacs (name: {

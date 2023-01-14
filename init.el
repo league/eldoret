@@ -261,8 +261,6 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
    "s" #'save-buffer
    "M-s" #'save-some-buffers)
 
-  (general-unbind :keymaps 'evil-normal-state-map "ZZ" "ZQ")
-
   (evil-define-text-object cl/a-whole-buffer (count &optional beg end type)
     "Select whole buffer, like \\[mark-whole-buffer]."
     (evil-range (point-min) (point-max)))
@@ -951,9 +949,10 @@ can help."
   :config
   (general-define-key
    :keymaps 'notmuch-message-mode-map
-   :states 'motion
-   "ZZ" 'notmuch-mua-send-and-exit
-   "ZQ" 'notmuch-mua-kill-buffer))
+   :states '(motion normal)
+   [remap evil-save-modified-and-close] 'notmuch-mua-send-and-exit
+   [remap evil-quit] 'notmuch-mua-kill-buffer
+   "s" 'notmuch-draft-save))
 
 (use-package sendmail ;; Send email messages
   :defer t
