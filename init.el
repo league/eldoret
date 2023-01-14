@@ -227,6 +227,7 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
    "bl" #'buffer-menu-other-window
    "bx" #'kill-buffer
    "f" '(nil :wk "Files")
+   "fi" #'cl/visit-init-file
    "ff" #'find-file
    "fl" #'find-library
    "ft" #'load-theme
@@ -260,6 +261,8 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
    "s" #'save-buffer
    "M-s" #'save-some-buffers)
 
+  (general-unbind :keymaps 'evil-normal-state-map "ZZ" "ZQ")
+
   (evil-define-text-object cl/a-whole-buffer (count &optional beg end type)
     "Select whole buffer, like \\[mark-whole-buffer]."
     (evil-range (point-min) (point-max)))
@@ -267,6 +270,14 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
    :keymaps 'evil-outer-text-objects-map
    "h" 'cl/a-whole-buffer) ;; ‹a h› selects entire buffer
   )
+
+(defun cl/visit-init-file ()
+  "Visit the init file for this Emacs.
+I’m hard-coding the location of the checked-out source rather than the copy in
+‘user-emacs-directory’ because that might be a symlink to the nix store, if we
+were started with “nix run”."
+  (interactive)
+  (find-file "~/u/dotemax/init.el"))
 
 (use-package undo-tree
   :defer t
@@ -921,6 +932,36 @@ can help."
   :no-require t
   :if (locate-library "ol-notmuch")
   :after ol)
+
+;; TODO In message-mode, ‹s› bound to ‹save-buffer›, but ‹C-x C-s› to
+;; ‘notmuch-draft-save’. What’s the difference?
+(use-package message ;; Compose email messages
+  :defer t
+  :init
+  (general-setq
+   message-forward-as-mime t
+   message-send-mail-function 'message-send-mail-with-sendmail)
+  :config
+  (general-unbind :keymaps 'message-mode-map "C-c C-c" "C-c C-k"))
+
+(use-package notmuch-message
+  :no-require t
+  :if (locate-library "notmuch")
+  :defer t
+  :config
+  (general-define-key
+   :keymaps 'notmuch-message-mode-map
+   :states 'motion
+   "ZZ" 'notmuch-mua-send-and-exit
+   "ZQ" 'notmuch-mua-kill-buffer))
+
+(use-package sendmail ;; Send email messages
+  :defer t
+  :init
+  (general-setq
+   mail-host-address "mail.contrapunctus.net"
+   mail-specify-envelope-from t
+   mail-envelope-from 'header))
 
 ;;;; Afterword
 
