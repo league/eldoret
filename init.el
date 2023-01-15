@@ -16,10 +16,10 @@
 ;; DONE Add evil-numbers
 ;; DONE Binding for ‘find-library’
 ;; DONE evil-surround with quotes etc.
+;; DONE Ensure sendmail works with message-mode
 ;; TODO ‘outline-minor-mode’ is missing keys I’m accustomed to, like ‹zB›
 ;; TODO Add toggles for themes
 ;; TODO Is leader available in magit? → No.
-;; TODO Ensure sendmail works with message-mode
 
 ;;; Code:
 
@@ -275,7 +275,7 @@ I’m hard-coding the location of the checked-out source rather than the copy in
 ‘user-emacs-directory’ because that might be a symlink to the nix store, if we
 were started with “nix run”."
   (interactive)
-  (find-file "~/u/dotemax/init.el"))
+  (find-file "~/.config/chemacs/eldoret/init.el"))
 
 (use-package undo-tree
   :defer t
@@ -390,7 +390,7 @@ were started with “nix run”."
   :defer t
   :diminish
   :init
-  (setq evil-collection-unimpaired-want-repeat-mode-integration t))
+  (general-setq evil-collection-unimpaired-want-repeat-mode-integration t))
 
 ;;;;; Repeatable bindings
 
@@ -729,7 +729,6 @@ can help."
   (general-setq rainbow-x-colors-major-mode-list nil))
 
 (use-package envrc ;; Load environment based on .envrc in working dir
-  :if (executable-find "direnv")
   :ghook ('emacs-startup-hook #'envrc-global-mode))
 
 (use-package avy ;; Jump to arbitrary positions in visible text

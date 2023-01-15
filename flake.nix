@@ -45,7 +45,7 @@
       # This overlay tweaks the packageBuild tool so that all packages built
       # with nix will include README files alongside the code.  Otherwise, we
       # have only Info files and Commentary sections in Elisp files.
-      overlays.packageBuild = _final: prev: {
+      overlays.packageBuild = final: prev: {
         emacsPackagesFor = emacs:
           (prev.emacsPackagesFor emacs).overrideScope' (_: esuper: {
             melpaBuild = args:
@@ -55,6 +55,21 @@
                     ++ old.patches;
                 });
               });
+
+            # These show how we can embed certain commands into the elisp
+            # files, to make sure those commands are part of the closure.
+            notmuch = esuper.notmuch.overrideAttrs (_: {
+              postPatch = ''
+                sed -i 's,"notmuch","${final.notmuch}/bin/notmuch",' \
+                  emacs/notmuch-lib.el
+              '';
+            });
+
+            envrc = esuper.envrc.overrideAttrs (_: {
+              postPatch = ''
+                sed -i 's,"direnv","${final.direnv}/bin/direnv",' envrc.el
+              '';
+            });
           });
       };
 
