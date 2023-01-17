@@ -20,8 +20,11 @@
 ;; DONE ‘outline-minor-mode’ is missing keys I’m accustomed to, like ‹zB› → It
 ;;      needed ‘outshine-mode’.
 ;; DONE ledger
-;; TODO Add toggles for themes
+;; DONE Could advise insert-state editing commands to use digit arguments – for
+;;      example ‹C-3 C-w› could ‘evil-delete-backward-word’ 3 times.  This DOES
+;;      work with ‹C-3 C-h› which is ‘evil-delete-backward-char-and-join’.
 ;; TODO Is leader available in magit? → No.
+;; TODO Add toggles for themes
 
 ;;; Code:
 
@@ -212,6 +215,26 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
   :ghook 'after-init-hook
   :config
   (evil-set-undo-system evil-undo-system)
+
+  ;; A ‘digit-argument’ works with ‹C-h› in insert state, but did not work with
+  ;; ‹C-w›.  This should help.
+  (evil-define-command evil-delete-backward-word (count)
+    "Delete previous COUNT words.
+This is a customization, the standard version does not support COUNT.  It is
+bound to ‹C-w› in insert state, so now you can do ‹C-5 C-w› to delete 5 previous
+words.  This can differ from hitting ‹C-w› 5 times – if point gets to the
+beginning of line, it does not continue deleting."
+    (interactive "p")
+    (let ((beg (save-excursion (evil-backward-word-begin count) (point)))
+          (end (point)))
+      (cond
+       ((evil-replace-state-p) (while (< beg (point))
+                                 (evil-replace-backspace)))
+       ((or (not (bolp)) (bobp)) (delete-region (max beg (line-beginning-position))
+                                                end))
+       (evil-backspace-join-lines (delete-char -1))
+       (t (user-error "Beginning of line")))))
+
   ;; Initial setup for leader key: it clobbers ‘evil-goto-mark-line’ ‹'›, but
   ;; it's not a big loss because ‹'X› is the same as ‹`X0› and anyway let's
   ;; double it up in the leader map so we can use ‹''X› too.
