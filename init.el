@@ -23,7 +23,7 @@
 ;; DONE Could advise insert-state editing commands to use digit arguments – for
 ;;      example ‹C-3 C-w› could ‘evil-delete-backward-word’ 3 times.  This DOES
 ;;      work with ‹C-3 C-h› which is ‘evil-delete-backward-char-and-join’.
-;; TODO Is leader available in magit? → No.
+;; DONE Is leader available in magit? → No.
 ;; TODO Add toggles for themes
 
 ;;; Code:
@@ -180,6 +180,8 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
   :defer t
   :commands server-running-p
   :init
+  ;; Using :ghook for this → “function ‘cl/start-server’ defined multiple times
+  ;; in this file”.
   (add-hook 'after-init-hook #'cl/start-server)
   :config
   ;; In a client frame, ‹C-x C-c› is ‘save-buffers-kill-terminal’ which leaves
@@ -213,6 +215,7 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
         evil-respect-visual-line-mode t
         evil-undo-system 'undo-tree)
   :ghook 'after-init-hook
+  :commands evil-backward-word-begin
   :config
   (evil-set-undo-system evil-undo-system)
 
@@ -395,13 +398,25 @@ were started with “nix run”."
 
 ;;;;; Evil all the things!
 
+(defun cl/evil-collection-setup (mode _keymaps &rest _rest)
+  "Add local evil customizations for MODE and its KEYMAPS."
+  (pcase mode
+    ('magit
+     ;; Magit overrides ‹'› for submodule.  We could put that on ‹#› instead —
+     ;; which is ‘evil-search-word-backward’.
+     (general-def :keymaps 'magit-mode-map "#" 'magit-submodule)
+     (general-unbind :keymaps 'magit-mode-map
+       :states '(normal visual nil) "'"))))
+
 (use-package evil-collection ;; Further keybindings and tools for Evil
   :after evil
   :commands evil-collection-init evil-collection-define-operator-key
   :init
-  (setq evil-collection-setup-minibuffer t
-        evil-collection-always-run-setup-hook-after-load t)
-  (evil-collection-init)
+  (add-hook 'evil-collection-setup-hook #'cl/evil-collection-setup)
+  (general-setq evil-collection-setup-minibuffer t
+                evil-collection-always-run-setup-hook-after-load t)
+  :ghook
+  ('after-init-hook 'evil-collection-init)
   :config
   (diminish 'evil-collection-unimpaired-mode)
   ;; The commands that begin with ‘evil-collection-unimpaired’ should have
@@ -838,6 +853,8 @@ can help."
 ;;;;; Revision control
 
 (use-package magit ;; A git porcelain inside Emacs
+  :init
+  (general-setq magit-define-global-key-bindings nil)
   :config
   (add-hook 'magit-post-display-buffer-hook #'cl/magit-post-display-buffer)
   :general
