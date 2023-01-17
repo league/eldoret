@@ -32,13 +32,13 @@
         (old: { meta = old.meta // { mainProgram = "emacs"; }; });
 
       # Collect the names of custom emacs variants defined in the overlay, and
-      # define an iterator to construct attribute sets.  The ‘defaultEmacs’ must
-      # be one of the ‘emacsAttrs’ names.  It is used in the devShell, and for
-      # the ‘default’ package and app.
+      # define an iterator to construct attribute sets.
       emacsAttrs = lib.attrNames (self.overlays.emacsen { } { });
       eachEmacs = mk: lib.listToAttrs (builtins.map mk emacsAttrs);
-      defaultEmacs = "lemacs";
 
+      patchExePath = var: def: path: file: ''
+        sed -i 's,\(${var}\) "${def}",\1 "${path}",' "${file}"
+      '';
     in {
       overlays.lib = _final: _prev: { inherit lib; };
 
@@ -47,7 +47,7 @@
       # have only Info files and Commentary sections in Elisp files.
       overlays.packageBuild = final: prev: {
         emacsPackagesFor = emacs:
-          (prev.emacsPackagesFor emacs).overrideScope' (_: esuper: {
+          (prev.emacsPackagesFor emacs).overrideScope' (eself: esuper: {
             melpaBuild = args:
               (esuper.melpaBuild args).overrideAttrs (before: {
                 packageBuild = before.packageBuild.overrideAttrs (old: {
@@ -56,20 +56,30 @@
                 });
               });
 
-            # These show how we can embed certain commands into the elisp
-            # files, to make sure those commands are part of the closure.
+            # These show how we can embed certain executable command paths into
+            # the elisp files, to make sure they are part of the closure.
             notmuch = esuper.notmuch.overrideAttrs (_: {
-              postPatch = ''
-                sed -i 's,"notmuch","${final.notmuch}/bin/notmuch",' \
-                  emacs/notmuch-lib.el
-              '';
+              postPatch = patchExePath "notmuch-command" "notmuch"
+                "${final.notmuch}/bin/notmuch" "emacs/notmuch-lib.el";
             });
 
+            # Embed direnv command path.
             envrc = esuper.envrc.overrideAttrs (_: {
-              postPatch = ''
-                sed -i 's,"direnv","${final.direnv}/bin/direnv",' envrc.el
-              '';
+              postPatch = patchExePath "envrc-direnv-executable" "direnv"
+                "${final.direnv}/bin/direnv" "envrc.el";
             });
+
+            # Ledger recipe ends up omitting info file.
+            ledger-mode = eself.melpaBuild {
+              inherit (esuper.ledger-mode) pname version commit src;
+              recipe = final.writeText "ledger-mode" ''
+                (ledger-mode :fetcher github :repo "ledger/ledger-mode"
+                  :files ("ledger*.el" "doc/ledger-mode.texi" "README*")
+                  :old-names (ldg-mode))
+              '';
+              postPatch = patchExePath "ledger-binary-path" "ledger"
+                "${final.ledger}/bin/ledger" "ledger-exec.el";
+            };
           });
       };
 
@@ -102,6 +112,7 @@
           p.nix-mode # Language mode for nix expressions
           p.no-littering # Keep ‘user-emacs-directory’ clean
           p.olivetti # Centered, constrained-width editing
+          p.outshine # Org-inspired outline minor mode
           p.php-mode # Major mode for PHP language
           p.rainbow-mode # Colorize color specs like #bff
           p.telephone-line # A pretty and configurable mode line
@@ -115,7 +126,9 @@
           ttyPkgs p ++ [
             p.benchmark-init # Record times for ‘require’ and ‘load’ calls
             p.default-text-scale # Adjust font size in all frames
+            p.evil-ledger # Make ledger-mode more evil
             p.fontaine # Set font configurations using presets
+            p.ledger-mode # Manage financial accounts
           ];
         mailPkgs = p:
           guiPkgs p ++ [
@@ -164,9 +177,7 @@
               egrep --quiet '^(Error|Cannot)' ./init.log && false
               cp ./init.elc "$out"
             '';
-        }) // {
-          default = pkgs.${defaultEmacs};
-        });
+        }));
 
       apps = eachSystem (pkgs:
         eachEmacs (name:
@@ -199,13 +210,11 @@
                     ${pkgs.${name}}/bin/emacs "$@"
                 fi
               '');
-          }) // {
-            default = self.apps.${pkgs.system}.${defaultEmacs};
-          });
+          }));
 
       devShells = eachSystem (pkgs: {
         default = pkgs.mkShell {
-          buildInputs = [ pkgs.${defaultEmacs} pkgs.nixfmt pkgs.nix-linter ];
+          buildInputs = [ pkgs.lemacs-nox pkgs.nixfmt pkgs.nix-linter ];
           shellHook = ''
             echo
             emacs --batch -f batch-byte-compile init.el

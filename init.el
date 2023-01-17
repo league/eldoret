@@ -17,7 +17,9 @@
 ;; DONE Binding for ‘find-library’
 ;; DONE evil-surround with quotes etc.
 ;; DONE Ensure sendmail works with message-mode
-;; TODO ‘outline-minor-mode’ is missing keys I’m accustomed to, like ‹zB›
+;; DONE ‘outline-minor-mode’ is missing keys I’m accustomed to, like ‹zB› → It
+;;      needed ‘outshine-mode’.
+;; DONE ledger
 ;; TODO Add toggles for themes
 ;; TODO Is leader available in magit? → No.
 
@@ -135,7 +137,6 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
   :general
   ("C-h C-u" #'use-package-report))
 
-
 (use-package auto-compile ;; Automatically (re-)compile elisp code.
   :init
   (setq auto-compile-mode-line-counter t
@@ -231,6 +232,7 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
    "ff" #'find-file
    "fl" #'find-library
    "ft" #'load-theme
+   "l" '(nil :wk "Local mode")
    "m" '(nil :wk "Mail")
    "t" '(nil :wk "Toggles"))
 
@@ -372,7 +374,7 @@ were started with “nix run”."
 
 (use-package evil-collection ;; Further keybindings and tools for Evil
   :after evil
-  :commands evil-collection-init
+  :commands evil-collection-init evil-collection-define-operator-key
   :init
   (setq evil-collection-setup-minibuffer t
         evil-collection-always-run-setup-hook-after-load t)
@@ -743,6 +745,12 @@ can help."
    "[c" 'flymake-goto-prev-error
    "]c" 'flymake-goto-next-error))
 
+(use-package outshine ;; Org-inspired outline minor mode
+  :diminish
+  :ghook 'emacs-lisp-mode-hook
+  :init
+  (general-setq outline-minor-mode-prefix (kbd "M-#")))
+
 (use-package evil-numbers ;; Increment/decrement numbers near point
   :general
   (:states 'motion
@@ -960,6 +968,44 @@ can help."
    mail-host-address "mail.contrapunctus.net"
    mail-specify-envelope-from t
    mail-envelope-from 'header))
+
+;;;;; Ledger
+
+(use-package evil-ledger
+  :no-require t
+  :if (locate-library "evil-ledger")
+  :ghook 'ledger-mode-hook
+  :init
+  (general-setq evil-ledger-sort-key "gs")
+  :config
+  (with-eval-after-load 'ledger-mode
+    (general-define-key
+     :keymaps 'ledger-mode-map :prefix cl/leader :states 'motion
+     "la" 'ledger-add-transaction
+     "lc" 'ledger-toggle-current
+     "le" 'ledger-toggle-current-transaction
+     "lk" 'ledger-copy-transaction-at-point
+     "lr" 'ledger-reconcile)
+    (general-unbind :keymaps 'ledger-mode-map
+      "C-c C-s"   ;; ‘ledger-sort-region’ is on visual:‹gs›
+      "C-c C-a"   ;; ‘ledger-add-transaction’
+      "C-c C-c"   ;; ‘ledger-toggle-current’
+      "C-c C-d"   ;; ‘ledger-delete-current-transaction’, use ‹dax›
+      "C-c C-e"   ;; ‘ledger-toggle-current-transaction’, use ‹dax›
+      "C-c C-k"   ;; ‘ledger-copy-transaction-at-point’
+      "C-c C-r")) ;; ‘ledger-reconcile’
+  (with-eval-after-load 'ledger-reconcile
+    (add-to-list 'evil-motion-state-modes 'ledger-reconcile-mode)
+    (general-define-key
+     :keymaps 'ledger-reconcile-mode-map :states 'motion
+     "SPC" 'ledger-reconcile-toggle
+     "gr" 'ledger-reconcile
+     "q" 'ledger-reconcile-quit
+     "s" 'ledger-reconcile-save
+     "ZQ" 'ledger-reconcile-quit
+     "ZZ" 'ledger-reconcile-finish)
+    (general-unbind :keymaps 'ledger-reconcile-mode-map
+      "C-c C-c")))
 
 ;;;; Afterword
 
