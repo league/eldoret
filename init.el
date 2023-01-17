@@ -24,6 +24,7 @@
 ;;      example ‹C-3 C-w› could ‘evil-delete-backward-word’ 3 times.  This DOES
 ;;      work with ‹C-3 C-h› which is ‘evil-delete-backward-char-and-join’.
 ;; DONE Is leader available in magit? → No.
+;; DONE text object for current line
 ;; TODO Add toggles for themes
 
 ;;; Code:
@@ -192,7 +193,7 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
 
 (defun cl/start-server ()
   "Start the server, unless already running."
-  (unless (server-running-p)
+  (unless (or (server-running-p) (daemonp))
     (server-mode)))
 
 ;;;; “Yep, here's your problem – someone set this thing to ‘evil’!”
@@ -218,6 +219,7 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
   :commands evil-backward-word-begin
   :config
   (evil-set-undo-system evil-undo-system)
+  (require 'evil-textobj-line) ;; ‹a l› entire line, ‹i l› excludes indent
 
   ;; A ‘digit-argument’ works with ‹C-h› in insert state, but did not work with
   ;; ‹C-w›.  This should help.
@@ -258,7 +260,7 @@ beginning of line, it does not continue deleting."
    "ff" #'find-file
    "fl" #'find-library
    "ft" #'load-theme
-   "l" '(nil :wk "Local mode")
+   "l" '(nil :wk "Local")
    "m" '(nil :wk "Mail")
    "t" '(nil :wk "Toggles"))
 
@@ -292,6 +294,7 @@ beginning of line, it does not continue deleting."
   (evil-define-text-object cl/a-whole-buffer (count &optional beg end type)
     "Select whole buffer, like \\[mark-whole-buffer]."
     (evil-range (point-min) (point-max)))
+
   (general-define-key
    :keymaps 'evil-outer-text-objects-map
    "h" 'cl/a-whole-buffer) ;; ‹a h› selects entire buffer
@@ -415,8 +418,9 @@ were started with “nix run”."
   (add-hook 'evil-collection-setup-hook #'cl/evil-collection-setup)
   (general-setq evil-collection-setup-minibuffer t
                 evil-collection-always-run-setup-hook-after-load t)
-  :ghook
-  ('after-init-hook 'evil-collection-init)
+  ;; Tried running this in ‘after-init-hook’ but it doesn't setup minibuffer and
+  ;; others – maybe runs too late.
+  (evil-collection-init)
   :config
   (diminish 'evil-collection-unimpaired-mode)
   ;; The commands that begin with ‘evil-collection-unimpaired’ should have
@@ -1030,8 +1034,8 @@ can help."
       "C-c C-s"   ;; ‘ledger-sort-region’ is on visual:‹gs›
       "C-c C-a"   ;; ‘ledger-add-transaction’
       "C-c C-c"   ;; ‘ledger-toggle-current’
-      "C-c C-d"   ;; ‘ledger-delete-current-transaction’, use ‹dax›
-      "C-c C-e"   ;; ‘ledger-toggle-current-transaction’, use ‹dax›
+      "C-c C-d"   ;; ‘ledger-delete-current-transaction’ → ‹dax›
+      "C-c C-e"   ;; ‘ledger-toggle-current-transaction’
       "C-c C-k"   ;; ‘ledger-copy-transaction-at-point’
       "C-c C-r")) ;; ‘ledger-reconcile’
   (with-eval-after-load 'ledger-reconcile

@@ -104,6 +104,7 @@
           p.evil-numbers # Increment/decrement numbers near point
           p.evil-surround # Add/remove/change paired delimiters around point
           p.evil-terminal-cursor-changer # Cursor shape & color in terminal
+          p.evil-textobj-line # Text object representing current line
           p.general # Convenient macros for keybindings
           p.hl-todo # Highlight “TO-DO” and similar keywords
           p.magit # A git porcelain inside Emacs
@@ -180,37 +181,20 @@
         }));
 
       apps = eachSystem (pkgs:
-        eachEmacs (name:
-          let
-            tmpHome = "/tmp/eldoret-${name}";
-            initDir = "${tmpHome}/emacs";
-            initElc = self.packages.${pkgs.system}."${name}-init-elc";
-          in {
-            inherit name;
-            value.type = "app";
-            # To run emacs stand-alone, we use ‘--no-init-file’, but manually call
-            # ‘package-activate-all’ to ensure that autoloads are available, and
-            # then explicitly load the byte-compiled init file.  We also create a
-            # placeholder ‘user-emacs-directory’ in ‘/tmp’ for state files and
-            # customizations.
-            value.program = toString
-              (pkgs.writeShellScript "emacs-standalone" ''
-                if [ -f "$HOME/.emacs.el" -o \
-                     -f "$HOME/.emacs" -o \
-                     -d "$HOME/.emacs.d" ]; then
-                    echo -n "Sorry, non-XDG emacs directories "
-                    echo "interfere with a standalone run."
-                else
-                    set -v
-                    mkdir -p "${initDir}"
-                    ln -sf "${./.}/early-init.el" "${initDir}/early-init.el"
-                    ln -sf "${./.}/init.el" "${initDir}/init.el"
-                    ln -sf "${initElc}" "${initDir}/init.elc"
-                    export XDG_CONFIG_HOME="${tmpHome}"
-                    ${pkgs.${name}}/bin/emacs "$@"
-                fi
-              '');
-          }));
+        eachEmacs (name: {
+          inherit name;
+          value.type = "app";
+          # I decided to substantially simplify how this (supposedly) stand-
+          # alone run works.  Setting either $HOME or $XDG_CONFIG_HOME to /tmp
+          # are problematic for routine use.  So assuming chemacs is active, we
+          # can set ‘user-emacs-directory’ to PWD and invoke the appropriate
+          # emacs-with-packages.
+          value.program = toString (pkgs.writeShellScript "emacs-standalone" ''
+            set -v
+            ${pkgs.${name}}/bin/emacs --with-profile \
+              "((user-emacs-directory . \"$PWD\"))"
+          '');
+        }));
 
       devShells = eachSystem (pkgs: {
         default = pkgs.mkShell {
