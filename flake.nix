@@ -113,6 +113,7 @@
           p.nix-mode # Language mode for nix expressions
           p.no-littering # Keep ‘user-emacs-directory’ clean
           p.olivetti # Centered, constrained-width editing
+          p.orderless # Complete by matching multiple regexps in any order
           p.outshine # Org-inspired outline minor mode
           p.php-mode # Major mode for PHP language
           p.rainbow-mode # Colorize color specs like #bff
@@ -120,6 +121,7 @@
           p.typescript-mode # Major mode for Typescript language
           p.undo-tree # Treat undo history as a tree
           p.use-package # Configuration macros
+          p.vertico # Vertical interactive completion
           p.which-key # Display available keybindings in a pop-up
           p.yaml-mode # Major mode for editing YAML files
         ];

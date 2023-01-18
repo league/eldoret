@@ -251,6 +251,7 @@ beginning of line, it does not continue deleting."
   (general-define-key
    :states 'motion
    :prefix cl/leader
+   ","  #'execute-extended-command
    "b" '(nil :wk "Buffers")
    "bb" #'switch-to-buffer
    "bl" #'buffer-menu-other-window
@@ -711,8 +712,30 @@ can help."
     (set-display-table-slot standard-display-table 'vertical-border
                             (make-glyph-code ?│))))
 
+;;;;; Minibuffer
+
+(use-package savehist
+  :ghook 'emacs-startup-hook)
+
+(setq enable-recursive-minibuffers t)
+
+;; TODO vertico needs to be evilified.
+(use-package vertico ;; Vertical interactive completion
+  :ghook 'emacs-startup-hook)
+
+(use-package orderless ;; Complete by matching multiple regexps in any order
+  :init
+  ;; Configure a custom style dispatcher (see the Consult wiki)
+  ;; (setq orderless-style-dispatchers '(+orderless-dispatch)
+  ;;       orderless-component-separator #'orderless-escapable-split-on-space)
+  (setq completion-styles '(orderless basic)
+        completion-category-defaults nil
+        completion-category-overrides '((file (styles partial-completion)))))
 
 ;;;; File system
+
+(use-package saveplace ;; Save our place in previously-visited files
+  :ghook ('emacs-startup-hook #'save-place-mode))
 
 ;;;;; Track recent files
 
