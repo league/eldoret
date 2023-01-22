@@ -25,7 +25,7 @@
 ;;      work with ‹C-3 C-h› which is ‘evil-delete-backward-char-and-join’.
 ;; DONE Is leader available in magit? → No.
 ;; DONE text object for current line
-;; TODO Add toggles for themes
+;; DONT Add toggles for themes?
 
 ;;; Code:
 
@@ -522,7 +522,10 @@ command SYM will be linked to the map for use with ‘repeat-mode’."
 (use-package ef-themes ;; Colorful and legible themes
   :defer t
   :init
-  (setq ef-themes-mixed-fonts t))
+  (general-setq ef-themes-mixed-fonts t)
+  :general
+  (:states 'motion :prefix cl/leader
+           "f M-t" 'ef-themes-load-random))
 
 (defun cl/load-initial-theme ()
   "Load initial theme."
@@ -912,7 +915,7 @@ can help."
 
 (use-package evil-commentary ;; Evil operators for (un-)commenting
   :diminish
-  :ghook 'prog-mode-hook)
+  :ghook 'prog-mode-hook 'tex-mode-hook)
 
 (use-package hl-todo ;; Highlight “TO-DO” and similar keywords
   :ghook
@@ -947,6 +950,7 @@ can help."
    notmuch-search-line-faces
    '(("unread" . notmuch-search-unread-face)
      ("flagged" . notmuch-search-flagged-face)
+     ("bill" . notmuch-tag-added)
      ("deleted" . (:strike-through t)))
    notmuch-tagging-keys
    '(("a" notmuch-archive-tags "Archive")
@@ -964,7 +968,8 @@ can help."
      (:name "bulk" :query "tag:inbox and tag:bulk" :key "b")
      (:name "flagged" :query "tag:flagged" :key "f")
      (:name "sent recently" :query "tag:sent and date:-2M..now" :key "r")
-     (:name "tca" :query "tag:tca and date:2021-12-01.." :key "t")
+     (:name "bills" :query "tag:inbox and tag:bill" :key "4")
+     (:name "tca" :query "tag:tca and date:2022-12-01.." :key "t")
      (:name "needs filter (gandi)" :query "tag:needs-filter and folder:/^cng/"
             :key "n")
      (:name "needs filter (liu)" :query "tag:needs-filter and folder:/^liu/"
