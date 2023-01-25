@@ -205,6 +205,7 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
 (defconst cl/leader "'")
 
 (use-package evil ;; I guess I joined the Dark Side™
+  :defer nil
   :init
   ;; DONE consider ‘evil-respect-visual-line-mode’
   ;; TODO I was never happy with ‘evil-complete-next-func’ ‹C-n›
@@ -239,6 +240,13 @@ beginning of line, it does not continue deleting."
                                                 end))
        (evil-backspace-join-lines (delete-char -1))
        (t (user-error "Beginning of line")))))
+
+  ;; Some alternatives to ESC.
+  (dolist (key '("M-g" "M-c" "M-z"))
+    (general-def :keymaps 'evil-normal-state-map key 'evil-force-normal-state)
+    (general-def :keymaps 'evil-visual-state-map key 'evil-exit-visual-state)
+    (general-def :keymaps 'evil-insert-state-map key 'evil-normal-state)
+    (general-def :keymaps 'evil-replace-state-map key 'evil-normal-state))
 
   ;; Initial setup for leader key: it clobbers ‘evil-goto-mark-line’ ‹'›, but
   ;; it's not a big loss because ‹'X› is the same as ‹`X0› and anyway let's
@@ -365,6 +373,15 @@ were started with “nix run”."
 ;;;;; Some evil shortcuts
 
 (use-package evil-escape
+  ;; TODO: could remove evil-escape from the flake if we're sure about this.
+  ;; I encountered a bad bug when using evil-escape and an evilified minibuffer.
+  ;; It seemed to be when a visual state was active, and then I was doing a sed
+  ;; command with ‹:›.  The minibuffer would be in insert state, but when typing
+  ;; ‹c› or ‹g› (keys in my escape sequence) those keys would appear/disappear
+  ;; right away.  Doom emacs includes evil-escape, so I wonder if they see this
+  ;; bug too.  Using key-chord doesn't seem to be very compatible with evil.
+  ;; Maybe instead, just use some meta-keys like ‹M-c›, ‹M-g›, or ‹M-z›.
+  :disabled
   :diminish
   :init
   ;; Grepping words file to find a 2-letter sequence that's easy to type on
@@ -379,6 +396,7 @@ were started with “nix run”."
   ;;    2 jk – Good, but might prefer right hand [Notice the 2× “ht”]
   ;;    1 cg – Bingo!? Just the string “cg” itself is in the words file.
   (setq evil-escape-key-sequence "cg")
+  (setq evil-escape-excluded-states '(visual))
 
   ;; The ‘evil-escape-delay’ seems pretty well-tuned at 0.1.  I can type a
   ;; sequence of them in insert state – cgcgcgcgcgcgcgcg – even fairly quickly,
@@ -688,7 +706,7 @@ can help."
    ;; for line numbers.
    olivetti-body-width 90
    ;; Style is nil to use just margins, t to use fringes, or 'fancy for both.
-   olivetti-style nil)
+   olivetti-style 'fancy)
   :general
   (:prefix cl/leader :states 'motion
            "to" #'olivetti-mode))

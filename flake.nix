@@ -106,6 +106,7 @@
           p.evil-terminal-cursor-changer # Cursor shape & color in terminal
           p.evil-textobj-line # Text object representing current line
           p.general # Convenient macros for keybindings
+          p.haskell-mode # Edit Haskell programs
           p.hl-todo # Highlight “TO-DO” and similar keywords
           p.magit # A git porcelain inside Emacs
           p.markdown-mode # Major mode for Markdown-formatted text
@@ -194,7 +195,7 @@
           value.program = toString (pkgs.writeShellScript "emacs-standalone" ''
             set -v
             ${pkgs.${name}}/bin/emacs --with-profile \
-              "((user-emacs-directory . \"$PWD\"))"
+              "((user-emacs-directory . \"$PWD\"))" "$@"
           '');
         }));
 
