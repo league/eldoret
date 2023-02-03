@@ -810,7 +810,7 @@ can help."
 ;;;; Programming modes
 
 (use-package rainbow-mode ;; Colorize color specs like #bff
-  :ghook 'emacs-lisp-mode-hook 'nix-mode-hook
+  :ghook 'emacs-lisp-mode-hook 'nix-mode-hook 'racket-mode-hook
   :diminish
   :init
   ;; Usually, colorizing plain words like red and RoyalBlue is distracting.

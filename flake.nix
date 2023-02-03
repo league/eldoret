@@ -118,6 +118,7 @@
           p.outshine # Org-inspired outline minor mode
           p.php-mode # Major mode for PHP language
           p.rainbow-mode # Colorize color specs like #bff
+          p.racket-mode
           p.telephone-line # A pretty and configurable mode line
           p.typescript-mode # Major mode for Typescript language
           p.undo-tree # Treat undo history as a tree
