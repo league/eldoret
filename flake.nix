@@ -99,7 +99,6 @@
           p.envrc # Load environment based on .envrc in working dir
           p.evil-collection # Further keybindings and tools for Evil
           p.evil-commentary # Evil operators for (un-)commenting
-          p.evil-escape # Escape from anything with a customizable key sequence
           p.evil # I guess I joined the Dark Side™
           p.evil-numbers # Increment/decrement numbers near point
           p.evil-surround # Add/remove/change paired delimiters around point

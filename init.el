@@ -371,54 +371,6 @@ were started with “nix run”."
   ;; is open (and ‹C-h› interferes with which-key scrolling).
   (general-unbind :keymaps 'help-map "?" "<f1>" "<help>" "C-h" "C-s" "q"))
 
-;;;;; Some evil shortcuts
-
-(use-package evil-escape
-  ;; TODO: could remove evil-escape from the flake if we're sure about this.
-  ;; I encountered a bad bug when using evil-escape and an evilified minibuffer.
-  ;; It seemed to be when a visual state was active, and then I was doing a sed
-  ;; command with ‹:›.  The minibuffer would be in insert state, but when typing
-  ;; ‹c› or ‹g› (keys in my escape sequence) those keys would appear/disappear
-  ;; right away.  Doom emacs includes evil-escape, so I wonder if they see this
-  ;; bug too.  Using key-chord doesn't seem to be very compatible with evil.
-  ;; Maybe instead, just use some meta-keys like ‹M-c›, ‹M-g›, or ‹M-z›.
-  :disabled
-  :diminish
-  :init
-  ;; Grepping words file to find a 2-letter sequence that's easy to type on
-  ;; Dvorak but rare in words:
-  ;; 3618 th – Obviously not workable, but just for comparison
-  ;;  918 ht – This would be ideal position, but far too common.
-  ;;  317 hl
-  ;;   93 lh
-  ;;   49 wm – I like this one, except “lawmaker” “sawmill”, “showman”, etc.
-  ;;   11 kj
-  ;;   11 gc – Mostly “eggcup” and “dogcart”, might be usable.
-  ;;    2 jk – Good, but might prefer right hand [Notice the 2× “ht”]
-  ;;    1 cg – Bingo!? Just the string “cg” itself is in the words file.
-  (setq evil-escape-key-sequence "cg")
-  (setq evil-escape-excluded-states '(visual))
-
-  ;; The ‘evil-escape-delay’ seems pretty well-tuned at 0.1.  I can type a
-  ;; sequence of them in insert state – cgcgcgcgcgcgcgcg – even fairly quickly,
-  ;; as long as I use a regular rhythm.  Activating the escape is more like
-  ;; hitting a “grace note.”  Also should check how it escapes from things other
-  ;; than insert mode.  When in a visual selection, ‹c› to change, and then ‹g›
-  ;; to insert that letter seems okay.
-
-  ;; Let’s allow unordered, so both ‹cg› and ‹gc› work.  Then treat it as a
-  ;; chord in addition to grace note, hitting both more-or-less simultaneously.
-  (setq evil-escape-unordered-key-sequence t)
-
-  ;; Remember, we can also use the ‘evil-escape’ to quit transients like help
-  ;; mode, magit, etc.
-  :ghook 'evil-local-mode-hook
-  :general
-  (:states '(motion insert replace)
-           "M-z" #'evil-escape
-           "M-g" #'evil-escape
-           "M-c" #'evil-escape))
-
 ;;;;; Evil all the things!
 
 (defun cl/evil-collection-setup (mode _keymaps &rest _rest)
