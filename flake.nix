@@ -199,16 +199,5 @@
               "((user-emacs-directory . \"$PWD\"))" "$@"
           '');
         }));
-
-      devShells = eachSystem (pkgs: {
-        default = pkgs.mkShell {
-          buildInputs = [ pkgs.lemacs-nox pkgs.nixfmt pkgs.nix-linter ];
-          shellHook = ''
-            echo
-            emacs --batch -f batch-byte-compile init.el
-            echo
-          '';
-        };
-      });
     };
 }

@@ -220,6 +220,7 @@ Get the report from the built-in profiler using \\[profiler-report].  If the
   :commands evil-backward-word-begin
   :config
   (evil-set-undo-system evil-undo-system)
+  (add-hook 'window-configuration-change-hook #'evil-normalize-keymaps)
   (require 'evil-textobj-line) ;; ‹a l› entire line, ‹i l› excludes indent
 
   ;; A ‘digit-argument’ works with ‹C-h› in insert state, but did not work with
