@@ -105,6 +105,7 @@
           p.evil-terminal-cursor-changer # Cursor shape & color in terminal
           p.evil-textobj-line # Text object representing current line
           p.general # Convenient macros for keybindings
+          p.god-mode
           p.haskell-mode # Edit Haskell programs
           p.hl-todo # Highlight “TO-DO” and similar keywords
           p.magit # A git porcelain inside Emacs
